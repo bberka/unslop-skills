@@ -119,4 +119,5 @@ if (json) {
   }
   console.log(`${flagged.length} of ${results.length} message(s) flagged.`);
 }
-process.exit(check && flagged.length ? 1 : 0);
+// exitCode, not exit(): exit() can drop the end of a large --json output on a pipe.
+process.exitCode = check && flagged.length ? 1 : 0;

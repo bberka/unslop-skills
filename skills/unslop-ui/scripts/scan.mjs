@@ -173,4 +173,5 @@ if (json) {
   console.log("Hits are candidates. Judge each against the tell's definition before changing anything.");
 }
 
-process.exit(check && findings.length > 0 ? 1 : 0);
+// exitCode, not exit(): exit() can drop the end of a large --json output on a pipe.
+process.exitCode = check && findings.length > 0 ? 1 : 0;

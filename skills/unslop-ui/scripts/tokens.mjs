@@ -141,28 +141,29 @@ report.rawColorsOutsideVariableDefinitions = rawColorsOutsideVars;
 report.motion = { animatedFiles: [...animatedFiles], reducedMotionFiles: [...reducedMotionFiles] };
 report.filesScanned = files.length;
 
+// One branch per format: exit() after printing can drop the end of a large --json output on a pipe.
 if (json) {
   console.log(JSON.stringify(report, null, 2));
-  process.exit(0);
-}
+} else {
 
-const LABELS = {
-  colors: "Colors", neutrals: "Neutrals (grays)", radii: "Radii", shadows: "Shadows", fontFamilies: "Font families",
-  fontSizes: "Font sizes", fontWeights: "Font weights", zIndex: "z-index values", arbitrary: "Arbitrary values",
-};
-console.log(`Scanned ${files.length} UI files.\n`);
-for (const [key, label] of Object.entries(LABELS)) {
-  const rows = report[key];
-  console.log(`${label}: ${rows.length} distinct`);
-  for (const r of rows.slice(0, TOP)) {
-    const where = r.files.slice(0, 3).join(", ") + (r.files.length > 3 ? `, +${r.files.length - 3} more` : "");
-    console.log(`  ${r.value}  x${r.count}  (${where})`);
+  const LABELS = {
+    colors: "Colors", neutrals: "Neutrals (grays)", radii: "Radii", shadows: "Shadows", fontFamilies: "Font families",
+    fontSizes: "Font sizes", fontWeights: "Font weights", zIndex: "z-index values", arbitrary: "Arbitrary values",
+  };
+  console.log(`Scanned ${files.length} UI files.\n`);
+  for (const [key, label] of Object.entries(LABELS)) {
+    const rows = report[key];
+    console.log(`${label}: ${rows.length} distinct`);
+    for (const r of rows.slice(0, TOP)) {
+      const where = r.files.slice(0, 3).join(", ") + (r.files.length > 3 ? `, +${r.files.length - 3} more` : "");
+      console.log(`  ${r.value}  x${r.count}  (${where})`);
+    }
+    if (rows.length > TOP) console.log(`  ... ${rows.length - TOP} more (use --top N or --json)`);
+    console.log("");
   }
-  if (rows.length > TOP) console.log(`  ... ${rows.length - TOP} more (use --top N or --json)`);
-  console.log("");
+  console.log(`CSS variables: ${varsDefined.size} defined, ${unusedVars.length} never read${unusedVars.length ? ": " + unusedVars.slice(0, 15).map((v) => "--" + v).join(", ") : ""}`);
+  console.log(`Raw color literals outside variable definitions: ${rawColorsOutsideVars}`);
+  const rm = [...reducedMotionFiles];
+  console.log(`Motion: ${animatedFiles.size} files animate; prefers-reduced-motion handled in ${rm.length}${rm.length ? ": " + rm.slice(0, 5).join(", ") + (rm.length > 5 ? `, +${rm.length - 5} more` : "") : " (ui-19 applies to every animated file)"}`);
+  console.log("\nCompare each count with the project's defined scale. More distinct values than the scale defines is ui-13 sprawl.");
 }
-console.log(`CSS variables: ${varsDefined.size} defined, ${unusedVars.length} never read${unusedVars.length ? ": " + unusedVars.slice(0, 15).map((v) => "--" + v).join(", ") : ""}`);
-console.log(`Raw color literals outside variable definitions: ${rawColorsOutsideVars}`);
-const rm = [...reducedMotionFiles];
-console.log(`Motion: ${animatedFiles.size} files animate; prefers-reduced-motion handled in ${rm.length}${rm.length ? ": " + rm.slice(0, 5).join(", ") + (rm.length > 5 ? `, +${rm.length - 5} more` : "") : " (ui-19 applies to every animated file)"}`);
-console.log("\nCompare each count with the project's defined scale. More distinct values than the scale defines is ui-13 sprawl.");

@@ -96,26 +96,27 @@ for (const c of components) if (DS_DIRS.test(c.file)) (dsFolders[dirname(c.file)
 
 const largest = [...components].sort((a, b) => b.lines - a.lines).slice(0, 15);
 
+// One branch per format: exit() after printing can drop the end of a large --json output on a pipe.
 if (json) {
   console.log(JSON.stringify({ components, similar: Object.fromEntries(similar), duplicateNames: Object.fromEntries(duplicateNames),
     designSystem: Object.fromEntries(Object.entries(dsFolders).map(([d, s]) => [d, [...s]])) }, null, 2));
-  process.exit(0);
-}
+} else {
 
-console.log(`${components.length} components in ${new Set(components.map((c) => c.file)).size} files.\n`);
-console.log("Design-system folders (reuse these before adding new primitives):");
-const ds = Object.entries(dsFolders);
-if (ds.length === 0) console.log("  none found");
-for (const [d, names] of ds) console.log(`  ${d}: ${[...names].sort().join(", ")}`);
-console.log("\nLargest components (react-10 candidates):");
-for (const c of largest) console.log(`  ${c.file}:${c.line}  ${c.name}  ${c.lines} lines, ${c.useState} useState, ${c.useEffect} effects`);
-console.log("\nSame role, different components (react-9 candidates; diff them):");
-if (similar.length === 0) console.log("  none");
-for (const [s, cs] of similar) {
-  const shown = cs.slice(0, MAX_MEMBERS_SHOWN).map((c) => `${c.name} (${c.file}:${c.line})`).join(", ");
-  const more = cs.length > MAX_MEMBERS_SHOWN ? `, +${cs.length - MAX_MEMBERS_SHOWN} more (--json lists all)` : "";
-  console.log(`  ${s} (${cs.length}): ${shown}${more}`);
+  console.log(`${components.length} components in ${new Set(components.map((c) => c.file)).size} files.\n`);
+  console.log("Design-system folders (reuse these before adding new primitives):");
+  const ds = Object.entries(dsFolders);
+  if (ds.length === 0) console.log("  none found");
+  for (const [d, names] of ds) console.log(`  ${d}: ${[...names].sort().join(", ")}`);
+  console.log("\nLargest components (react-10 candidates):");
+  for (const c of largest) console.log(`  ${c.file}:${c.line}  ${c.name}  ${c.lines} lines, ${c.useState} useState, ${c.useEffect} effects`);
+  console.log("\nSame role, different components (react-9 candidates; diff them):");
+  if (similar.length === 0) console.log("  none");
+  for (const [s, cs] of similar) {
+    const shown = cs.slice(0, MAX_MEMBERS_SHOWN).map((c) => `${c.name} (${c.file}:${c.line})`).join(", ");
+    const more = cs.length > MAX_MEMBERS_SHOWN ? `, +${cs.length - MAX_MEMBERS_SHOWN} more (--json lists all)` : "";
+    console.log(`  ${s} (${cs.length}): ${shown}${more}`);
+  }
+  console.log("\nSame name defined in several files:");
+  if (duplicateNames.length === 0) console.log("  none");
+  for (const [n, cs] of duplicateNames) console.log(`  ${n}: ${cs.map((c) => `${c.file}:${c.line}`).join(", ")}`);
 }
-console.log("\nSame name defined in several files:");
-if (duplicateNames.length === 0) console.log("  none");
-for (const [n, cs] of duplicateNames) console.log(`  ${n}: ${cs.map((c) => `${c.file}:${c.line}`).join(", ")}`);
