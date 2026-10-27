@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { script, fixtures, repo } from "./helpers.mjs";
@@ -94,4 +94,87 @@ test("all detect.mjs honours --exclude, ignores agent tooling, and counts only r
   assert.equal(out.detected.typescript.files, 3, "no game or tooling files");
   assert.equal(out.detected.text.files, 1, "docs/guide.md, not the changelog entry");
   assert.equal(out.detected.react.files, 2, "the .claude skill asset is not React code");
+});
+
+const survey = (args, cwd) => JSON.parse(execFileSync("node", [script("unslop-all", "detect.mjs"), "--questions", ...args], { cwd, encoding: "utf8" }));
+const question = (out, header) => out.questions.find((q) => q.header === header);
+const labels = (q) => q?.options.map((o) => o.label);
+
+// The mixed repo plus the things a survey proposes to leave alone.
+function guardedRepo() {
+  const r = mixedRepo();
+  r.put("AGENTS.md", [
+    "- Treat `docs/history/` as read-only.",
+    "- Touch another game only when the owner names it.",
+    "- Never add bots unless the owner asks for them.",
+  ].join("\n") + "\n");
+  r.put("docs/history/2024-plan.md", "# Old plan\n");
+  r.put("docs/changelog/pr-1.md", "- Fixed a thing\n");
+  r.put("web/history/history.ts", "export const past = [];\n");
+  r.git("add", ".");
+  r.git("commit", "-q", "-m", "Add rules, history, and a changelog");
+  return r;
+}
+
+test("all detect.mjs --questions builds AskUserQuestion-shaped questions with an answer for every option", () => {
+  const { dir } = guardedRepo();
+  const out = survey([], dir);
+  assert.deepEqual(out.questions.map((q) => q.header), ["Scope", "Exclude", "Passes", "Changes"]);
+  for (const q of out.questions) {
+    assert.ok(q.header.length <= 12, q.header);
+    assert.ok(q.options.length >= 2 && q.options.length <= 4, `${q.header}: ${q.options.length} options`);
+    assert.equal(new Set(labels(q)).size, q.options.length, `${q.header}: labels repeat`);
+    for (const o of q.options) {
+      assert.deepEqual(Object.keys(o).sort(), ["description", "label"]);
+      assert.ok(out.answers[q.header][o.label], `${q.header} / ${o.label} has no answer`);
+    }
+  }
+  assert.equal(labels(question(out, "Scope"))[0], "Whole repo (Recommended)");
+  assert.deepEqual(labels(question(out, "Passes")), ["Tests", "Code", "Docs", "Commit messages"]);
+  assert.deepEqual(labels(question(out, "Changes")), ["Review branch (Recommended)", "Current branch", "Report only"]);
+  assert.equal(question(out, "Exclude").multiSelect, true);
+});
+
+test("all detect.mjs --questions proposes protected folders, release records, and the rules that name an area in words", () => {
+  const { dir } = guardedRepo();
+  const out = survey([], dir);
+  assert.deepEqual(labels(question(out, "Exclude")), ["Protected areas", "Release records", "Nothing extra"]);
+  assert.deepEqual(out.answers.Exclude["Protected areas"].flags, ["--exclude", join(dir, "docs/history")]);
+  assert.deepEqual(out.answers.Exclude["Release records"].flags, ["--exclude", join(dir, "docs/changelog")], "web/history holds code, so it is not a record");
+  assert.deepEqual(out.rules.map((r) => [r.line, r.paths]), [[1, ["docs/history"]], [2, []]], "the bots rule is about behavior, not scope");
+});
+
+test("all detect.mjs --questions asks only what the scope leaves open", () => {
+  const { dir, git, put } = guardedRepo();
+  let out = survey([join(dir, "api")]);
+  assert.deepEqual(out.questions.map((q) => q.header), ["Passes", "Changes"], "a named folder settles Scope, and api/ has nothing to exclude");
+  assert.deepEqual(labels(question(out, "Passes")), ["Code", "Commit messages"]);
+
+  git("checkout", "-q", "-b", "feature");
+  put("web/client.ts", "export const get = (url: string) => fetch(url, { cache: \"no-store\" });\n");
+  out = survey([], dir);
+  assert.equal(labels(question(out, "Scope"))[0], "Branch changes (Recommended)");
+  assert.deepEqual(out.answers.Scope["Branch changes (Recommended)"].flags, ["--changed"]);
+  assert.match(question(out, "Changes").question, /uncommitted changes/);
+});
+
+test("all detect.mjs --passes runs only the picked passes, and commits audits history even for a folder", () => {
+  const { dir } = mixedRepo();
+  const out = detect(["--passes", "code,commits", join(dir, "api")], dir);
+  assert.deepEqual(planned(out), ["unslop-csharp", "unslop-git"]);
+  assert.equal(reason(out, "unslop-tests"), "not picked");
+  assert.equal(reason(out, "unslop-text"), "not picked");
+  const bad = spawnSync("node", [script("unslop-all", "detect.mjs"), "--passes", "lint"], { cwd: dir, encoding: "utf8" });
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /unknown pass "lint"/);
+});
+
+test("all detect.mjs accepts the flags its own answers map to", () => {
+  const { dir } = guardedRepo();
+  const answers = survey([], dir).answers;
+  const flags = [...answers.Scope["Whole repo (Recommended)"].flags, ...answers.Exclude["Protected areas"].flags, ...answers.Exclude["Release records"].flags];
+  const out = detect([...flags, "--passes", answers.Passes.Docs.passes.join(",")], dir);
+  assert.deepEqual(out.scope.excluded, ["docs/history", "docs/changelog"]);
+  assert.deepEqual(planned(out), ["unslop-text"]);
+  assert.equal(out.detected.text.files, 2, "docs/guide.md and AGENTS.md");
 });

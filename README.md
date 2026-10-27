@@ -11,7 +11,7 @@ Agent skills that find and remove AI slop: patterns that mark text, interfaces, 
 | `unslop-react` | React components, hooks, near-duplicate components | `scan.mjs`, `inventory.mjs` |
 | `unslop-csharp` | C# and .NET code | `scan.mjs`, `dead-code.mjs` |
 | `unslop-tests` | Test suites in JS/TS, C#, Python, and Go | `scan.mjs` |
-| `unslop-all` | Runs the applicable skills in order, one pass per skill, on a review branch when the user wants one | `detect.mjs` |
+| `unslop-all` | Surveys the repo, asks what to cover, then runs the applicable skills one pass at a time | `detect.mjs` |
 
 ## How the skills call each other
 
@@ -25,7 +25,14 @@ unslop-all
 └── unslop-git           (last, so it can also describe the passes)
 ```
 
-`unslop-all` plans its passes from the files inside the chosen scope (a folder, a file, the branch's changes, or the whole repo), so a docs folder gets only `unslop-text` and a backend folder never reaches `unslop-react`. Every skill also checks its own scope and stops with "nothing in scope" when it has no files to work on.
+`unslop-all` starts with a survey (`detect.mjs --questions`) and asks up to four questions in one prompt, through `AskUserQuestion` in Claude Code or as one message elsewhere. A question is left out when the survey or the request already settles it.
+
+- Scope: the whole repo, this branch's changes, or one of the largest folders.
+- Exclude: folders the project's `AGENTS.md`, `CLAUDE.md`, or `CONTRIBUTING.md` marks read-only or owner-only, release records, and generated code.
+- Passes: tests, code, docs, and commit messages, as the survey found them.
+- Changes: a review branch with one commit per pass, the current branch left uncommitted, or a report only that changes no file.
+
+It then plans from the files inside that scope, so a docs folder gets only `unslop-text` and a backend folder never reaches `unslop-react`. Every skill also checks its own scope and stops with "nothing in scope" when it has no files to work on.
 
 Skills reach each other by name, falling back to the sibling folder (`../unslop-ui/`), so install them together.
 

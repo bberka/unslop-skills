@@ -30,7 +30,7 @@ node scripts/ledger.mjs add --skill unslop-text --tell text-6 --action remove \
   --evidence "no benchmark in the repo or docs; asked the user for a source"
 ```
 
-Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry. When the user or the invoking skill asks for a report only, record each finding as `propose` with its fix in `--what`, change no file, skip the fix and verify steps, and pass the same instruction to any skill this one invokes.
 
 ## Report
 
