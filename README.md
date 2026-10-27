@@ -66,7 +66,7 @@ Every skill records what it changed, kept, or proposed in `.unslop/ledger.jsonl`
 
 ### Silencing a hit
 
-The scanners skip a line containing `unslop-ignore` and a file containing `unslop-ignore-file`. The text scanner also skips changelogs (`CHANGELOG`, `HISTORY`, `RELEASE_NOTES`) on a directory walk, since release tooling writes those; naming one explicitly scans it.
+The scanners skip a line containing `unslop-ignore` and a file containing `unslop-ignore-file`. To leave out a whole area (a folder the project's `AGENTS.md` reserves for its owner, generated code), pass `--exclude <path>` to any scanner or to `detect.mjs`. Agent tooling folders (`.claude/`, `.agents/`, `.cursor/`) are never scanned as project code. The text scanner also skips changelogs (`CHANGELOG`, `HISTORY`, `RELEASE_NOTES`) on a directory walk, since release tooling writes those; naming one explicitly scans it.
 
 ### Commit-message hook
 

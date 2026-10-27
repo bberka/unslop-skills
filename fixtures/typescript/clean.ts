@@ -36,3 +36,35 @@ export function regionOf(order: { customer?: { address?: { region?: string } } }
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- the API omits address for guests
   return order.customer?.address?.region ?? "unknown";
 }
+
+// Probes and parse guards: the catch's default is the handling.
+export function isTracked(path: string): boolean {
+  try {
+    execFileSync("git", ["ls-files", "--error-unmatch", "--", path], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readPrefs(key: string): { theme?: string } | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function onMessage(type: string, data: unknown): void {
+  try {
+    handlers[type](data);
+    metrics.count(type);
+  } catch (error) {
+    console.warn(`dropped a bad "${type}" message`, error);
+  }
+}
+
+export const SILENCER = `<script>try{a();b()}catch(e){}</script>`;

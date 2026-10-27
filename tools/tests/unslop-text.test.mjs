@@ -46,3 +46,10 @@ function scanText(text) {
   writeFileSync(join(dir, "t.md"), text);
   return JSON.parse(execFileSync("node", [script("unslop-text", "scan.mjs"), "--json", "t.md"], { cwd: dir, encoding: "utf8" }));
 }
+
+test("unslop-text: names, orientation, table placeholders, and arrow chains are not tells", () => {
+  const slop = scan("unslop-text", "text", ["slop.md"]);
+  assert.ok(slop.some((f) => f.id === "text-10" && /landscape/i.test(f.match)), "the abstract landscape is flagged");
+  assert.ok(slop.some((f) => f.id === "text-28" && f.match === "→"), "a lone arrow is flagged");
+  assert.deepEqual(scan("unslop-text", "text", ["clean.md"]), []);
+});

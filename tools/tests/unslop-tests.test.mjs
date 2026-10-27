@@ -31,3 +31,7 @@ test("tests: a catch that asserts is flagged unless the try block fails on fall-
 test("tests: Arrange/Act/Assert comments are one hit per file", () => {
   assert.deepEqual(matches("tests-16"), ["slop.test.ts:25 3 Arrange/Act/Assert comments", "slop.test.ts:51 console.log("]);
 });
+
+test("unslop-tests: a file in a spec/ folder with no tests is not scanned", () => {
+  assert.deepEqual(scan("unslop-tests", "tests", ["assets/spec/mobs.mjs"]), []);
+});

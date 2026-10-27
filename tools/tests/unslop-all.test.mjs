@@ -79,3 +79,19 @@ test("all detect.mjs runs on a folder of fixtures inside this repo", () => {
   assert.ok(planned(out).includes("unslop-csharp"));
   assert.equal(reason(out, "unslop-text"), "no docs in scope");
 });
+
+test("all detect.mjs honours --exclude, ignores agent tooling, and counts only real tests in spec/ folders", () => {
+  const { dir, git, put } = mixedRepo();
+  put(".claude/skills/shadcn/assets/card.tsx", "import * as React from \"react\";\nexport const Card = () => <div />;\n");
+  put("games/run/scripts/assets/spec/mobs.mjs", "export const mobs = [];\n");
+  put("games/run/src/Game.ts", "export class Game {}\n");
+  put("docs/changelog/pr-1.md", "- Fixed a thing\n");
+  git("add", ".");
+  git("commit", "-q", "-m", "Add tooling, a game, and a changelog entry");
+  const out = detect(["--exclude", join(dir, "games")], dir);
+  assert.deepEqual(out.scope.excluded, ["games"]);
+  assert.equal(out.detected.tests.files, 1, "web/app.test.ts only");
+  assert.equal(out.detected.typescript.files, 3, "no game or tooling files");
+  assert.equal(out.detected.text.files, 1, "docs/guide.md, not the changelog entry");
+  assert.equal(out.detected.react.files, 2, "the .claude skill asset is not React code");
+});

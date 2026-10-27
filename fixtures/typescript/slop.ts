@@ -44,9 +44,12 @@ export function load(): Promise<string> {
   });
 }
 
-export function parse(raw: string) {
+export async function syncOrders(userId: string) {
   try {
-    return JSON.parse(raw);
+    const orders = await db.orders(userId);
+    await db.archive(orders);
+    await db.notify(userId);
+    return orders.length;
   } catch {
     return null;
   }

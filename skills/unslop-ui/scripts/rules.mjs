@@ -19,6 +19,13 @@ function perFile(re, label) {
   };
 }
 
+// `A · B` meta strings, once per file. A page title separator ("Docs · Product") is the
+// browser-tab convention, not chrome.
+function middleDots(text) {
+  const kept = text.split("\n").map((l) => (/<title\b|svelte:head|document\.title|\btitle\s*[:=]/.test(l) ? "" : l)).join("\n");
+  return perFile(/\s·\s/g, "middle-dot separators")(kept);
+}
+
 function reducedMotion(text) {
   if (/prefers-reduced-motion|useReducedMotion|motion-reduce:|motion-safe:|MotionConfig[^>]*reducedMotion/.test(text)) return [];
   const lines = text.split("\n");
@@ -59,8 +66,8 @@ const rules = [
     check: perFile(/(?![©®™])\p{Extended_Pictographic}/gu, "emoji") },
   { id: "ui-7", title: "ALL-CAPS eyebrow", files, exclude,
     pattern: /\buppercase\b[^"'`\n]*\btracking-(?:wide|wider|widest|\[)|\btracking-(?:wider|widest)\b[^"'`\n]*\buppercase\b/ },
-  { id: "ui-7", title: "Template chrome", files: markup, exclude,
-    pattern: /\s·\s|→\s*(?:<\/|['"`])/ },
+  { id: "ui-7", title: "Template chrome", files: markup, exclude, check: middleDots },
+  { id: "ui-7", title: "Template chrome", files: markup, exclude, pattern: /→\s*(?:<\/|['"`])/ },
   { id: "ui-8", title: "Fabricated proof", files: markup, exclude,
     pattern: /\b\d+(?:[.,]\d+)?[kKmM]?\+\s*(?:users|customers|developers|teams|companies|downloads|businesses|happy)\b|\b99\.9+%|\b(?:Trusted by|Loved by|Join) (?:thousands|millions|over|\d)/i },
   { id: "ui-11", title: "Motion everywhere", files, exclude,
@@ -72,9 +79,9 @@ const rules = [
     pattern: /(?<!dark:)\b(?:text|placeholder)-(?:gray|slate|zinc|neutral|stone)-(?:300|400)\b/ },
   { id: "ui-16", title: "Focus outline removed", files, exclude, check: focusRemoved },
   { id: "ui-17", title: "Clickable non-button", files: markup, exclude,
-    pattern: /<(?:div|span|li|td)\b[^>]*\bonClick=/ },
+    pattern: /<(?:div|span|li|td)\b[^>]*(?:\bon[Cc]lick=|\bon:click\b|@click\b|\bv-on:click\b)/ },
   { id: "ui-17", title: "Image without alt", files: markup, exclude,
-    multiline: /<img\b(?![^>]*\balt=)[^>]*>/, filter: (_m, _line, path) => !vendoredHtml.test(path) },
+    multiline: /<img\b(?![^>]*(?:\balt=|\{alt\}|\{\s*\.\.\.))[^>]*>/, filter: (_m, _line, path) => !vendoredHtml.test(path) },
   { id: "ui-19", title: "Animation without reduced-motion path", files, exclude, check: reducedMotion },
   { id: "ui-20", title: "Copy slop", files: markup, exclude,
     pattern: /\b(?:Unlock|Supercharge|Unleash|Elevate|Revolutioni[sz]e|Seamless(?:ly)?|Effortless(?:ly)?|Next[- ]gen(?:eration)?|Game[- ]chang(?:er|ing)|Cutting[- ]edge|Oops|Something went wrong|Learn more|Get started(?: today| now| for free)?)\b/i },

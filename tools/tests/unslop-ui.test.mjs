@@ -37,3 +37,9 @@ test("ui scan.mjs skips compiled Tailwind output", () => {
   const out = JSON.parse(execFileSync("node", [script("unslop-ui", "scan.mjs"), "--json", "out.css", "src.css"], { cwd: dir, encoding: "utf8" }));
   assert.deepEqual([...new Set(out.map((f) => f.file))], ["src.css"]);
 });
+
+test("ui scan.mjs reads Svelte: {alt} shorthand and <title> separators pass, a clickable div does not", () => {
+  assert.deepEqual(scan("unslop-ui", "ui", ["Clean.svelte"]), []);
+  const slop = scan("unslop-ui", "ui", ["Slop.svelte"]).map((f) => `${f.line} ${f.title}`);
+  assert.deepEqual(slop, ["1 Clickable non-button", "2 Image without alt"]);
+});

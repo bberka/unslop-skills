@@ -260,7 +260,13 @@ function narration(text) {
   return hits;
 }
 
-export default [
+// A file in a test folder that holds no tests (an asset spec, a fixture, a check harness that
+// reports through console.log) is not test code. Test-named files and snapshots always count.
+const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)test_[^/]*\.py$|_test\.(?:py|go)$|Tests?\.cs$|\.snap$/;
+const TEST_MARKERS = /\b(?:describe|it|test)(?:\.\w+)?\s*\(|\[(?:Fact|Theory|Test|TestMethod|TestCase|DataTestMethod)\b|\bdef test_\w*\s*\(|\bfunc Test\w*\s*\(|\bclass \w*Tests?\b/;
+const notATest = (text, path) => !TEST_NAME.test(path) && !TEST_MARKERS.test(text);
+
+const rules = [
   { id: "tests-1", title: "Tautology", files,
     pattern: /expect\(\s*(true|false|null|undefined|\d+|'[^']*'|"[^"]*")\s*\)\.(?:toBe|toEqual|toStrictEqual)\(\s*\1\s*\)|expect\(\s*([\w.]+)\s*\)\.(?:toBe|toEqual|toStrictEqual)\(\s*\2\s*\)|Assert\.(?:True|IsTrue)\(\s*true\s*\)|Assert\.(?:False|IsFalse)\(\s*false\s*\)|Assert\.(?:Equal|AreEqual|Same)\(\s*([\w.]+)\s*,\s*\3\s*\)|^\s*assert\s+True\b|\bassert\s+([\w.]+)\s*==\s*\4\s*$/ },
   { id: "tests-2", title: "No assertion", files, check: noAssertion },
@@ -285,3 +291,5 @@ export default [
   { id: "tests-15", title: "try/catch hiding a failure", files, exclude: /\.(?:py|cs|go)$/, check: catchHidesFailure },
   { id: "tests-16", title: "Narration", files, check: narration },
 ];
+
+export default rules.map((rule) => ({ skipFile: notATest, ...rule }));

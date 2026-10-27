@@ -25,3 +25,16 @@ The extension reads the same config file. In the status table, `🚫` marks a ch
 | Check | Status |
 | --- | --- |
 | `::` + [`ipv6Only`](https://example.org/ipv6) | 🚫 |
+
+## Horse Race
+
+Horse Race is a gift race. On a phone in landscape, the stage pauses until the phone turns back to portrait. Difficulty runs from Easy to Extremely difficult, and gifts unlock a new skin each round.
+
+| Game        | Camera | Notes |
+| ----------- | ------ | ----- |
+| Horse Race  | Side   | —     |
+
+Each gift goes through the same pipeline: host message → viewer event → trigger engine → action.
+
+- **Tetris Chat (Tetris 99):** the streamer plays Tetris while gifts send garbage lines.
+- **Leave prompt:** "Leave site?" only shows on a standalone window.

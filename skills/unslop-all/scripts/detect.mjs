@@ -3,10 +3,14 @@
 // Only files inside the scope count: a repo with C# elsewhere does not send unslop-csharp
 // into a docs folder. Skills with nothing in scope are listed as skipped, with the reason.
 //
-// Usage: node detect.mjs [--json] [paths...]          files or folders (default: the whole repo)
-//        node detect.mjs [--json] --changed[=<base>] [paths...]
+// Usage: node detect.mjs [--json] [--exclude <path>]... [paths...]
+//          files or folders (default: the whole repo)
+//        node detect.mjs [--json] [--exclude <path>]... --changed[=<base>] [paths...]
 //          files changed on this branch against <base> (default: the default branch),
 //          plus uncommitted and untracked files, narrowed to [paths] when given
+//   --exclude  leave a file or folder out (repeatable): areas the project's AGENTS.md or
+//              CONTRIBUTING.md puts off limits, release records, generated code
+// Agent tooling folders (.claude/, .agents/, .cursor/, ...) never count as project code.
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, resolve, relative, dirname } from "node:path";
@@ -14,7 +18,16 @@ import { join, resolve, relative, dirname } from "node:path";
 const args = process.argv.slice(2);
 const json = args.includes("--json");
 const changedArg = args.find((a) => a === "--changed" || a.startsWith("--changed="));
-const paths = args.filter((a) => !a.startsWith("--")).map((p) => resolve(p));
+const paths = [];
+const excludeArgs = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--exclude") {
+    if (!args[i + 1]) { console.error("detect: --exclude needs a path"); process.exit(2); }
+    excludeArgs.push(resolve(args[++i]));
+  } else if (!args[i].startsWith("--")) {
+    paths.push(resolve(args[i]));
+  }
+}
 for (const p of paths) if (!existsSync(p)) { console.error(`detect: no such path: ${p}`); process.exit(2); }
 
 const anchor = paths[0] ? (statSync(paths[0]).isDirectory() ? paths[0] : dirname(paths[0])) : process.cwd();
@@ -42,9 +55,11 @@ if (isGit) {
 const rel = (p) => relative(root, p).split("\\").join("/");
 const scopePaths = paths.map(rel).filter((p) => p !== "");
 const mode = changedArg ? "changed" : scopePaths.length ? "paths" : "repo";
-const inScope = (f) => scopePaths.length === 0 || scopePaths.some((p) => f === p || f.startsWith(`${p}/`));
+const excludePaths = excludeArgs.map(rel);
+const under = (f, p) => p === "" || f === p || f.startsWith(`${p}/`);
+const inScope = (f) => (scopePaths.length === 0 || scopePaths.some((p) => under(f, p))) && !excludePaths.some((p) => under(f, p));
 
-const SKIP = /(?:^|\/)(?:node_modules|\.git|dist|build|out|bin|obj|coverage|\.next|\.nuxt|\.svelte-kit|\.turbo|vendor|target|\.venv|venv|__pycache__)\//;
+const SKIP = /(?:^|\/)(?:node_modules|\.git|dist|build|out|bin|obj|coverage|\.next|\.nuxt|\.svelte-kit|\.turbo|vendor|target|\.venv|venv|__pycache__|\.agents|\.claude|\.cursor|\.codex|\.gemini|\.windsurf|\.unslop)\//;
 let files;
 let base = null;
 if (mode === "changed") {
@@ -73,12 +88,23 @@ files = files.filter((f) => inScope(f) && !SKIP.test(f) && !/\.min\.(?:js|css)$/
 const count = (list, re) => list.filter((f) => re.test(f)).length;
 const byExt = (list, exts) => Object.fromEntries(exts.map((e) => [e, count(list, new RegExp(`\\.${e}$`, "i"))]).filter(([, n]) => n));
 
-const TEST = /(?:^|\/)(?:__tests__|tests?|specs?|e2e)\/.*\.(?:[cm]?[jt]sx?|py|cs|go)$|\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)test_[^/]*\.py$|_test\.(?:py|go)$|Tests?\.cs$|(?:^|\/)[\w.]*Tests?(?:\.[\w.]+)?\/.*\.cs$/;
+// A test by its name, or a file in a test folder that holds tests. Asset specs and helpers in a
+// `spec/` folder are not tests.
+const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)test_[^/]*\.py$|_test\.(?:py|go)$|Tests?\.cs$/;
+const TEST_DIR = /(?:^|\/)(?:__tests__|tests?|specs?|e2e)\/.*\.(?:[cm]?[jt]sx?|py|cs|go)$|(?:^|\/)[\w.]*Tests?(?:\.[\w.]+)?\/.*\.cs$/;
+const TEST_MARKERS = /\b(?:describe|it|test)(?:\.\w+)?\s*\(|\[(?:Fact|Theory|Test|TestMethod|TestCase)\b|\bdef test_\w*\s*\(|\bfunc Test\w*\s*\(|\bclass \w*Test\w*\b/;
+const isTest = (f) => {
+  if (TEST_NAME.test(f)) return true;
+  if (!TEST_DIR.test(f)) return false;
+  try { return TEST_MARKERS.test(readFileSync(join(root, f), "utf8").slice(0, 200_000)); } catch { return false; }
+};
+const testFiles = new Set(files.filter(isTest));
+const TEST = { test: (f) => testFiles.has(f) };
 const sourceJs = files.filter((f) => /\.(?:[cm]?tsx?|[cm]?jsx?)$/i.test(f) && !/\.d\.[cm]?ts$/.test(f) && !TEST.test(f) && !/(?:^|\/)[\w.-]+\.config\.[cm]?[jt]s$/.test(f));
 const sourceCs = files.filter((f) => /\.cs$/i.test(f) && !TEST.test(f));
 const tests = files.filter((f) => TEST.test(f));
 // Changelogs are skipped for the same reason unslop-text's scanner skips them: release tooling writes them.
-const docs = files.filter((f) => /\.(?:md|mdx|markdown|txt|rst|adoc)$/i.test(f) && !/(?:^|\/)(?:LICENSE|NOTICE|THIRD[-_]PARTY|CHANGELOG|CHANGES|HISTORY|RELEASE[-_]?NOTES)/i.test(f));
+const docs = files.filter((f) => /\.(?:md|mdx|markdown|txt|rst|adoc)$/i.test(f) && !/(?:^|\/)(?:LICENSE|NOTICE|THIRD[-_]PARTY|CHANGELOG|CHANGES|HISTORY|RELEASE[-_]?NOTES)/i.test(f) && !/(?:^|\/)(?:changelogs?|release[-_]?notes|\.changeset)\//i.test(f));
 const uiFiles = files.filter((f) => /\.(?:css|scss|sass|less|html?|jsx|tsx|vue|svelte|astro|razor|cshtml)$/i.test(f) && !TEST.test(f));
 
 // React counts only when the scope itself holds React code: a backend folder in a monorepo
@@ -120,7 +146,7 @@ if (!isGit) {
   if (commits > 0) plan[plan.length - 1].range = range;
 }
 
-const scope = { mode, paths: scopePaths, base, files: files.length };
+const scope = { mode, paths: scopePaths, excluded: excludePaths, base, files: files.length };
 const detected = {
   tests: { files: tests.length },
   typescript: { files: sourceJs.length, byExt: byExt(sourceJs, ["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"]) },
@@ -136,7 +162,7 @@ if (json) {
 } else {
   const scopeLine = mode === "repo" ? "whole repo" : mode === "changed" ? `changes against ${base}${scopePaths.length ? ` under ${scopePaths.join(", ")}` : ""}` : scopePaths.join(", ");
   console.log(`Project: ${root}`);
-  console.log(`Scope:   ${scopeLine} (${files.length} files)`);
+  console.log(`Scope:   ${scopeLine} (${files.length} files)${excludePaths.length ? `, excluding ${excludePaths.join(", ")}` : ""}`);
   console.log(isGit ? `Git:     on ${branch}, default branch ${defaultBranch ?? "unknown"}` : "Git:     not a repository");
   console.log("\nIn scope:");
   console.log(`  tests       ${tests.length} files`);

@@ -3,12 +3,13 @@
 // Tell scanner. The source of truth is shared/scan.mjs; tools/sync.mjs copies it
 // into each skill's scripts/ folder. Edit the shared copy, then run `npm run sync`.
 //
-// Usage: node scan.mjs [--json] [--check] [paths...]
+// Usage: node scan.mjs [--json] [--check] [--exclude <path>]... [paths...]
 //   Scans files with the rules in ./rules.mjs. Directories are walked (git-aware,
-//   skipping dependency and build folders) and filtered by each rule's `files`
-//   pattern; files named explicitly get every rule.
-//   --json   machine-readable output
-//   --check  exit 1 when anything is found (for hooks and CI)
+//   skipping dependency, build, and agent-tooling folders) and filtered by each rule's
+//   `files` pattern; files named explicitly get every rule.
+//   --json     machine-readable output
+//   --check    exit 1 when anything is found (for hooks and CI)
+//   --exclude  skip a file or folder (repeatable), for areas the project puts off limits
 //
 // A line containing `unslop-ignore` is skipped; a file containing
 // `unslop-ignore-file` is skipped entirely.
@@ -21,7 +22,8 @@
 //     check?: (text, path) => [{ line, match }],  // custom file-level check
 //     filter?: (match, line, path) => boolean,     // drop a match when false
 //     skipFile?: (text, path) => boolean,          // skip this rule for the whole file when true
-//     prose?: true }                     // markdown: blank out code fences and inline code first
+//     prose?: true,                      // markdown: blank out code fences and inline code first
+//     script?: true }                    // .svelte/.vue/.astro/.html: blank out all but <script> blocks
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -32,14 +34,26 @@ const SKIP_DIRS = new Set([
   "node_modules", ".git", "dist", "build", "out", "bin", "obj", "coverage",
   ".next", ".nuxt", ".svelte-kit", ".turbo", ".cache", "vendor", "target",
   "__pycache__", ".venv", "venv",
+  // Agent tooling: installed skills and agent worktrees are not the project's code.
+  ".agents", ".claude", ".cursor", ".codex", ".gemini", ".windsurf", ".unslop",
 ]);
 const MAX_BYTES = 1_000_000;
 
 const args = process.argv.slice(2);
 const json = args.includes("--json");
 const check = args.includes("--check");
-const targets = args.filter((a) => !a.startsWith("--"));
+const excludes = [];
+const targets = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--exclude") {
+    if (!args[i + 1]) { console.error("scan: --exclude needs a path"); process.exit(2); }
+    excludes.push(resolve(args[++i]));
+  } else if (!args[i].startsWith("--")) {
+    targets.push(args[i]);
+  }
+}
 if (targets.length === 0) targets.push(".");
+const excluded = (abs) => excludes.some((e) => abs === e || abs.startsWith(e.endsWith("/") ? e : `${e}/`));
 
 function gitFiles(dir) {
   try {
@@ -74,6 +88,23 @@ function maskMarkdownCode(text) {
     .replace(/<!--[\s\S]*?-->/g, blank);
 }
 
+// Keep only <script> blocks (and Astro frontmatter) in component files, so code rules
+// read the script and line numbers still match the file.
+function maskOutsideScript(text, path) {
+  if (!/\.(?:svelte|vue|astro|html?)$/i.test(path)) return text;
+  const keep = [];
+  for (const m of text.matchAll(/(<script\b[^>]*>)([\s\S]*?)<\/script>/gi)) keep.push([m.index + m[1].length, m.index + m[1].length + m[2].length]);
+  const front = /\.astro$/i.test(path) ? /^---\n([\s\S]*?)\n---/.exec(text) : null;
+  if (front) keep.push([4, 4 + front[1].length]);
+  let out = "";
+  let at = 0;
+  for (const [from, to] of keep.sort((a, b) => a[0] - b[0])) {
+    out += text.slice(at, from).replace(/[^\n]/g, " ") + text.slice(from, to);
+    at = to;
+  }
+  return out + text.slice(at).replace(/[^\n]/g, " ");
+}
+
 function lineOf(text, index) {
   let line = 1;
   for (let i = 0; i < index; i++) if (text.charCodeAt(i) === 10) line++;
@@ -106,6 +137,8 @@ function scanFile(path, explicit) {
   const isMarkdown = /\.(md|mdx|markdown)$/i.test(path);
   const masked = isMarkdown ? maskMarkdownCode(raw) : raw;
   const maskedLines = masked.split("\n");
+  let script = null;
+  let scriptLines = null;
 
   const push = (rule, line, match) => {
     const source = rawLines[line - 1] ?? "";
@@ -119,8 +152,12 @@ function scanFile(path, explicit) {
 
   for (const rule of applicable) {
     if (rule.skipFile && rule.skipFile(raw, posixRel)) continue;
-    const text = rule.prose ? masked : raw;
-    const lines = rule.prose ? maskedLines : rawLines;
+    if (rule.script && script === null) {
+      script = maskOutsideScript(raw, posixRel);
+      scriptLines = script.split("\n");
+    }
+    const text = rule.prose ? masked : rule.script ? script : raw;
+    const lines = rule.prose ? maskedLines : rule.script ? scriptLines : rawLines;
     if (rule.pattern) {
       const re = withGlobal(rule.pattern);
       lines.forEach((l, i) => {
@@ -145,8 +182,9 @@ for (const target of targets) {
     console.error(`scan: no such path: ${target}`);
     process.exit(2);
   }
+  if (excluded(abs)) continue;
   if (statSync(abs).isDirectory()) {
-    for (const f of gitFiles(abs) ?? walk(abs)) scanFile(f, false);
+    for (const f of gitFiles(abs) ?? walk(abs)) if (!excluded(f)) scanFile(f, false);
   } else {
     scanFile(abs, true);
   }
