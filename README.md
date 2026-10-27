@@ -30,7 +30,7 @@ Skills reach each other by name, falling back to the sibling folder (`../unslop-
 ## Install
 
 ```bash
-npx skills add <owner>/unslop-skills
+npx skills add bberka/unslop-skills
 ```
 
 To install by hand, copy each folder under `skills/` into your agent's skills directory (`~/.agents/skills/`, `~/.claude/skills/`, or the project's `.claude/skills/`).
