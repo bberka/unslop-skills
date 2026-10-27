@@ -1,0 +1,35 @@
+:root {
+  --ink: #1d1a16;
+  --paper: #fbfaf7;
+  --accent: #2f6f4e;
+  --unused-token: #ff00ff;
+}
+
+.card {
+  color: #333;
+  background: #fafafa;
+  border-radius: 12px;
+  box-shadow: 0 0 40px rgba(124, 58, 237, 0.6);
+  animation: fade-up 0.6s ease-out;
+}
+
+.card:focus {
+  outline: none;
+}
+
+.title {
+  color: #343434;
+  font-size: 13px;
+  font-family: "Inter", sans-serif;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+.button {
+  color: var(--ink);
+  background: var(--accent);
+  border-radius: 8px;
+}
