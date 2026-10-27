@@ -15,9 +15,9 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
 2. **Baseline.** Run the project's typecheck (`tsc --noEmit` or its script), lint, and tests, and record the results. Start from a clean worktree so every change shows in one `git diff`. Done when all three results are written down, including failures that already existed. Those failures are reported, not fixed.
 3. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 4. **Scan.**
-   - Run `node scripts/scan.mjs <paths>` for lexical tells.
-   - Run `npx knip` for dead files, exports, and dependencies (`ts-15`).
-   - Run `npx jscpd --gitignore --min-tokens 50 <paths>` for clones (`ts-14`).
+   - Run `node scripts/scan.mjs <paths>` for lexical tells. It skips tests, e2e suites, and declaration files.
+   - Run `npx knip` for dead files, exports, and dependencies (`ts-15`). Without a `knip` config in the repo, its unused-export list is a candidate list, not a verdict.
+   - Run `npx jscpd --min-tokens 50 --format "typescript,tsx,javascript,jsx" <paths>` for clones (`ts-14`). It respects `.gitignore` by default.
    - Then read every file in scope for the tells no tool sees: `ts-5`, `-6`, `-8`, `-12`, `-13`, `-16`, `-21`. Start with the files that have the most hits.
 
    Done when every file is read and every hit is judged.
@@ -36,7 +36,7 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
 ```
 ## unslop-typescript
 Fixed:    ts-18 x41, ts-1 x12, ts-12 x5 ...   (one line per notable fix: path:line  id  what)
-Proposed: path:line  ts-13  what  →  suggested change  (why it needs a decision)
+Proposed: path:line  ts-13  what  ->  suggested change  (why it needs a decision)
 Kept:     path:line  ts-3   reason
 Checks:   typecheck ok, lint ok, tests 212/212 (baseline 212/212)
 ```

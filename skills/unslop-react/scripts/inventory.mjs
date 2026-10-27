@@ -8,8 +8,10 @@ import { execFileSync } from "node:child_process";
 import { join, relative, resolve, dirname } from "node:path";
 
 const FILES = /\.(?:jsx|tsx)$/i;
-const SKIP = /(?:^|[\\/])(?:node_modules|\.git|dist|build|out|coverage|\.next|storybook-static|__tests__|__mocks__)(?:[\\/]|$)|\.(?:test|spec|stories)\.[jt]sx$/;
-const EXPECTED_MANY = new Set(["Page", "Layout", "Provider", "Screen", "Route", "Icon", "Context", "Story", "Root", "App"]);
+const SKIP = /(?:^|[\\/])(?:node_modules|\.git|dist|build|out|coverage|\.next|storybook-static|__tests__|__mocks__|__fixtures__|e2e|playwright|cypress)(?:[\\/]|$)|\.(?:test|spec|e2e|stories)\.[jt]sx$/;
+// Suffixes that name a kind of file or a demo rather than a reusable role.
+const EXPECTED_MANY = new Set(["Page", "Layout", "Provider", "Screen", "Route", "Icon", "Context", "Story", "Root", "App", "Demo", "Example", "Preview"]);
+const MAX_MEMBERS_SHOWN = 12;
 const DS_DIRS = /(?:^|\/)(?:ui|design-system|primitives|components\/common|kit)(?:\/|$)/;
 
 const args = process.argv.slice(2);
@@ -38,11 +40,19 @@ const files = targets.flatMap((t) => {
   return statSync(abs).isDirectory() ? list(abs) : [abs];
 }).filter((f) => FILES.test(f) && !SKIP.test(relative(process.cwd(), f)) && existsSync(f));
 
+// A function body: `function`, `(args) =>`, or `arg =>`.
+const FN = "(?:async\\s*)?(?:function\\b|\\(|[a-z_]\\w*\\s*=>)";
+// Wrappers whose argument is the component: memo(...), forwardRef<A, B<"x">>(...), memo(forwardRef(...)).
+// The function may start on the same line or the next one.
+const WRAP = "(?:(?:React\\.)?(?:memo|forwardRef|observer)\\s*(?:<.*>)?\\(\\s*){1,2}";
 const DECL = [
   /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+([A-Z]\w*)\s*[(<]/,
-  /^(?:export\s+)?const\s+([A-Z]\w*)\s*(?::[^=]+)?=\s*(?:(?:React\.)?(?:memo|forwardRef)\s*(?:<[^>]*>)?\(\s*)?(?:async\s*)?(?:function\b|\(|[a-z_]\w*\s*=>)/,
+  new RegExp(`^(?:export\\s+)?const\\s+([A-Z]\\w*)\\s*(?::[^=]+)?=\\s*(?:${WRAP}(?:${FN}|$)|${FN})`),
   /^(?:export\s+)?(?:default\s+)?class\s+([A-Z]\w*)\s+extends\s+(?:React\.)?(?:Pure)?Component\b/,
 ];
+// A component ends at the next top-level declaration or at a line holding only closing brackets in column 0.
+const BOUNDARY = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:const|let|var|function|class|type|interface|enum|namespace|declare)\b|^export\s*[{*]/;
+const CLOSER = /^[}\])]+;?\s*$/;
 
 const components = [];
 for (const file of files) {
@@ -56,7 +66,11 @@ for (const file of files) {
     }
   });
   starts.forEach((s, k) => {
-    const end = k + 1 < starts.length ? starts[k + 1].line - 1 : lines.length;
+    let end = k + 1 < starts.length ? starts[k + 1].line - 1 : lines.length;
+    for (let i = s.line; i < end; i++) {
+      if (BOUNDARY.test(lines[i])) { end = i; break; }
+      if (CLOSER.test(lines[i])) { end = i + 1; break; }
+    }
     const body = lines.slice(s.line - 1, end).join("\n");
     components.push({
       name: s.name, file: rel, line: s.line, lines: end - s.line + 1,
@@ -97,7 +111,11 @@ console.log("\nLargest components (react-10 candidates):");
 for (const c of largest) console.log(`  ${c.file}:${c.line}  ${c.name}  ${c.lines} lines, ${c.useState} useState, ${c.useEffect} effects`);
 console.log("\nSame role, different components (react-9 candidates; diff them):");
 if (similar.length === 0) console.log("  none");
-for (const [s, cs] of similar) console.log(`  ${s}: ${cs.map((c) => `${c.name} (${c.file}:${c.line})`).join(", ")}`);
+for (const [s, cs] of similar) {
+  const shown = cs.slice(0, MAX_MEMBERS_SHOWN).map((c) => `${c.name} (${c.file}:${c.line})`).join(", ");
+  const more = cs.length > MAX_MEMBERS_SHOWN ? `, +${cs.length - MAX_MEMBERS_SHOWN} more (--json lists all)` : "";
+  console.log(`  ${s} (${cs.length}): ${shown}${more}`);
+}
 console.log("\nSame name defined in several files:");
 if (duplicateNames.length === 0) console.log("  none");
 for (const [n, cs] of duplicateNames) console.log(`  ${n}: ${cs.map((c) => `${c.file}:${c.line}`).join(", ")}`);

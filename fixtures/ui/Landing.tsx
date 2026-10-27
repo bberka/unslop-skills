@@ -11,14 +11,17 @@ export function Landing() {
         <p className="text-gray-400 mt-[13px]">Trusted by 10K+ developers · 99.9% uptime</p>
         <a href="/docs">Learn more →</a>
       </section>
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-6 data-[state=open]:bg-white">
         <div className="rounded-2xl shadow-lg backdrop-blur-md p-6 hover:scale-105 transition-all" onClick={() => alert("hi")}>
           <Sparkles />
           <h3>Feature 1</h3>
           <p>Lorem ipsum dolor sit amet.</p>
         </div>
       </div>
-      <img src="https://placehold.co/600x400" />
+      <img
+        src="https://placehold.co/600x400"
+        className="w-full"
+      />
       <button className="outline-none animate-pulse bg-[#5b5bd6]">Get started</button>
     </main>
   );

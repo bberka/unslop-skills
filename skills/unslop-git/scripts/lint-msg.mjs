@@ -21,68 +21,93 @@ const PAST = /^(?:added|fixed|updated|removed|changed|implemented|created|refact
 const VOCAB = /\b(?:enhanc(?:e|es|ed|ing|ement)|robust|seamless(?:ly)?|comprehensive|streamlin(?:e|es|ed|ing)|leverag(?:e|es|ed|ing)|utili[sz](?:e|es|ed|ing)|ensur(?:e|es|ing) (?:that|proper|better)|improv(?:e|es|ed|ing) (?:the )?(?:overall )?(?:code )?(?:quality|readability|maintainability|robustness)|for better (?:readability|maintainability|performance|code quality)|various (?:improvements|changes|fixes)|several improvements|best practices)\b/i;
 const HEADER = /^\s*(?:#{1,3}\s+\S|\*{0,2}(?:summary|changes(?: made)?|key changes|benefits|overview|motivation|details|testing|impact|what changed|why)\*{0,2}:)/i;
 const SELF = /\b(?:this (?:commit|pr|pull request|mr|patch)|in this (?:commit|pr|change))\b/i;
-const RESIDUE = /(?:generated (?:with|by) |🤖|co-authored-by:.*(?:claude|copilot|chatgpt|openai|cursor|gemini|devin|codex|noreply@anthropic))/i;
+// AI tool identities only. Bots like dependabot and human co-authors are not tells.
+const AI_TOOL = /claude(?:\s+(?:code|opus|sonnet|haiku|fable|mythos)\b|\s*<)|(?:github\s+)?copilot\b|chatgpt|gpt-?\d|openai|cursor(?:\s+agent)?\s*<|gemini|devin\b|codex\b|aider\b|windsurf|cline\b|noreply@anthropic\.com|@cursor\.com|copilot@github\.com|@openai\.com/i;
+const CO_AUTHOR = /^\s*co-authored-by:/i;
+const GENERATED = /(?:generated|made|created|written|assisted)\s+(?:with|by)\s+\[?(?:claude|chatgpt|gpt|copilot|cursor|gemini|devin|codex|aider|windsurf|cline|an? ai\b|ai\b)/i;
 const CHATBOT = /\b(?:i've|i have (?:added|updated|fixed|made)|let me know|i hope|here's (?:a|the) (?:summary|breakdown))\b/i;
 const DIFF_BULLET = /^\s*[-*]\s+(?:add(?:ed|s)?|update[sd]?|modif(?:y|ied|ies)|change[sd]?|remove[sd]?|create[sd]?|delete[sd]?)\s+`?[\w./-]+\.(?:[cm]?[jt]sx?|cs|py|go|rs|java|kt|rb|php|md|json|ya?ml|css|scss|html|vue|svelte|sql|csproj|toml)`?/i;
+const MIXED = /\b(?:and|also|plus)\b.*\b(?:add|fix|remove|update|refactor|rename|move|bump|delete|drop|introduce)(?:s|ed|ing|es)?\b/i;
 const EMOJI = /\p{Extended_Pictographic}/u;
 const CONVENTIONAL = /^(\w+)(\([^)]*\))?!?:\s*/;
+const PR_SUFFIX = /\s*\(#\d+\)$/;
+const TRAILER = /^[A-Za-z][\w-]*: \S/;
+const GIT_COMMENT = /^#(?:\s|$)/;
+// "5.3.0" or "proxy-addr@^2.0.8": a release or dependency bump whose one word says it all.
+const VERSION_LIKE = /^(?:v?\d+\.\d+(?:\.\d+)?\S*|\S+@\S+)$/;
 
-function lint(message) {
-  const lines = message.replace(/\r/g, "").split("\n").filter((l) => !l.startsWith("#"));
+// `stripComments` is for messages read from a file or stdin, where git's "# ..." help
+// text may still be present. Messages from history keep lines that start with "#".
+function lint(message, { stripComments = false } = {}) {
+  const lines = message.replace(/\r/g, "").split("\n").filter((l) => !(stripComments && GIT_COMMENT.test(l)));
   while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
   const hits = [];
   const add = (id, title, match) => hits.push({ id, title, match: String(match).trim().slice(0, 80) });
   const subject = lines[0] ?? "";
-  const bare = subject.replace(CONVENTIONAL, "").trim();
+  const bare = subject.replace(CONVENTIONAL, "").replace(PR_SUFFIX, "").trim();
+  const subjectLength = subject.replace(PR_SUFFIX, "").length;
   const body = lines.slice(2);
 
   if (!bare) add("git-1", "Empty subject", subject);
-  else if (VAGUE.test(bare) || bare.split(/\s+/).length < 2) add("git-1", "Vague subject", subject);
-  if (subject.length > 72) add("git-2", `Subject over 72 chars (${subject.length})`, subject);
-  if (/[.!…]$/.test(subject)) add("git-2", "Subject ends with punctuation", subject);
+  else if (VAGUE.test(bare) || (bare.split(/\s+/).length < 2 && !VERSION_LIKE.test(bare))) add("git-1", "Vague subject", subject);
+  if (subjectLength > 72) add("git-2", `Subject over 72 chars (${subjectLength})`, subject);
+  if (/[.!…]$/.test(subject.replace(PR_SUFFIX, ""))) add("git-2", "Subject ends with punctuation", subject);
   if (PAST.test(bare)) add("git-2", "Subject not in imperative mood", bare.split(/\s+/)[0]);
   const capitalized = bare.split(/\s+/).slice(1).filter((w) => /^[A-Za-z]{4,}$/.test(w));
   if (capitalized.length >= 3 && capitalized.every((w) => /^[A-Z][a-z]/.test(w))) add("git-2", "Title Case subject", subject);
   if (EMOJI.test(subject)) add("git-2", "Emoji in subject", subject);
-  if (/\b(?:and|also|plus)\b.*\b(?:add|fix|remov|updat|refactor|renam|mov|bump|delet)\w*/i.test(bare)) add("git-8", "Subject joins separate changes", subject);
+  if (MIXED.test(bare)) add("git-8", "Subject joins separate changes", subject);
   if (lines.length > 1 && lines[1].trim() !== "") add("git-11", "No blank line after subject", lines[1]);
 
   const diffBullets = body.filter((l) => DIFF_BULLET.test(l));
   if (diffBullets.length >= 2) add("git-3", "Body lists files the diff already shows", diffBullets[0]);
   for (const l of body) if (HEADER.test(l)) add("git-4", "Section header in body", l);
-  if (body.filter((l) => /\*\*[^*]+\*\*/.test(l)).length > 0) add("git-4", "Markdown bold in body", body.find((l) => /\*\*[^*]+\*\*/.test(l)));
+  const bold = body.find((l) => /\*\*[^*]+\*\*/.test(l));
+  if (bold) add("git-4", "Markdown bold in body", bold);
   for (const l of lines) if (VOCAB.test(l)) add("git-5", "AI vocabulary or empty benefit claim", l.match(VOCAB)[0]);
   const self = lines.find((l) => SELF.test(l));
   if (self) add("git-6", "Message describes itself", self.match(SELF)[0]);
-  for (const l of lines) if (RESIDUE.test(l)) add("git-7", "Tool attribution", l);
+  for (const l of lines) {
+    if ((CO_AUTHOR.test(l) && AI_TOOL.test(l)) || GENERATED.test(l) || /🤖/.test(l)) add("git-7", "AI tool attribution", l);
+  }
   for (const l of lines) if (CHATBOT.test(l)) add("git-9", "Chatbot voice", l.match(CHATBOT)[0]);
-  if (body.some((l) => EMOJI.test(l))) add("git-9", "Emoji in body", body.find((l) => EMOJI.test(l)));
-  const wide = body.filter((l) => l.length > 72 && !/https?:\/\/|`/.test(l) && !/^\s{4}/.test(l));
+  const emojiLine = body.find((l) => EMOJI.test(l) && !/🤖/.test(l));
+  if (emojiLine) add("git-9", "Emoji in body", emojiLine);
+  const wide = body.filter((l) => l.length > 72 && !/https?:\/\/|`/.test(l) && !/^\s{4}/.test(l) && !TRAILER.test(l));
   if (wide.length) add("git-10", "Body line over 72 chars", wide[0]);
-  if (body.filter((l) => l.trim()).length > 25) add("git-10", "Body over 25 lines", `${body.length} lines`);
+  const bodyLines = body.filter((l) => l.trim()).length;
+  if (bodyLines > 25) add("git-10", "Body over 25 lines", `${bodyLines} lines`);
   return hits;
 }
 
 function fromRange(range) {
   const sep = "\x1e";
-  const out = execFileSync("git", ["log", "--no-merges", `--format=%h%x00%B${sep}`, range], { encoding: "utf8" });
+  let out;
+  try {
+    out = execFileSync("git", ["log", "--no-merges", `--format=%h%x00%B${sep}`, range], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (e) {
+    console.error(`lint-msg: git log failed for range "${range}": ${(e.stderr ?? e.message).toString().trim()}`);
+    process.exit(2);
+  }
   return out.split(sep).map((s) => s.replace(/^\n/, "")).filter((s) => s.includes("\0"))
     .map((s) => { const [sha, msg] = s.split("\0"); return { sha, message: msg }; });
 }
 
 let items;
+let stripComments = false;
 if (rangeAt !== -1) {
   const range = args[rangeAt + 1];
   if (!range) { console.error("lint-msg: --range needs a value, e.g. main..HEAD"); process.exit(2); }
   items = fromRange(range);
 } else if (positional[0]) {
   items = [{ sha: null, message: readFileSync(positional[0] === "-" ? 0 : positional[0], "utf8") }];
+  stripComments = true;
 } else {
   console.error("Usage: lint-msg.mjs <file> | - | --range <range> [--check] [--json]");
   process.exit(2);
 }
 
-const results = items.map((it) => ({ ...it, subject: it.message.split("\n")[0], hits: lint(it.message) }));
+const results = items.map((it) => ({ ...it, subject: it.message.split("\n").find((l) => !(stripComments && GIT_COMMENT.test(l))) ?? "", hits: lint(it.message, { stripComments }) }));
 const flagged = results.filter((r) => r.hits.length);
 
 if (json) {

@@ -34,6 +34,7 @@ namespace Demo
         public async void Refresh()
         {
             await Task.Run(async () => await LoadAsync());
+            await LoadAsync().ConfigureAwait(false);
             var client = new HttpClient();
             var key = _configuration["Api:Key"];
             Console.WriteLine(string.Format("Key {0}", key));
@@ -41,9 +42,9 @@ namespace Demo
 
         public bool HasUsers(List<User> users)
         {
-            if (users.Count() > 0)
+            if (users!.Count() > 0)
             {
-                return users.Where(u => u.Active).First() != null;
+                return users.Where(u => u.Active).First()!.Name != null;
             }
             try { Save(); } catch (Exception e) { throw e; }
             try { Save(); } catch { }

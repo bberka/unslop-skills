@@ -20,6 +20,7 @@
 //     multiline?: RegExp,                // whole-file match; reported at the match's first line
 //     check?: (text, path) => [{ line, match }],  // custom file-level check
 //     filter?: (match, line, path) => boolean,     // drop a match when false
+//     skipFile?: (text, path) => boolean,          // skip this rule for the whole file when true
 //     prose?: true }                     // markdown: blank out code fences and inline code first
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
@@ -117,6 +118,7 @@ function scanFile(path, explicit) {
   };
 
   for (const rule of applicable) {
+    if (rule.skipFile && rule.skipFile(raw, posixRel)) continue;
     const text = rule.prose ? masked : raw;
     const lines = rule.prose ? maskedLines : rawLines;
     if (rule.pattern) {

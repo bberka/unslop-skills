@@ -17,14 +17,14 @@ The project's design system and the user's brief override both lists. If the bri
 1. **Subject.** From the README, the brief, or the user, write down three things: what the product is, who uses it, and the screen's one job. Every template judgment is made relative to these. Done when each fits in one sentence.
 2. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 3. **Look.** Take screenshots at 1440px and 375px when the environment allows it (start the dev server and drive a browser or Playwright). If the user gave images or mockups, work from those. Otherwise read the markup and styles for every page or route in scope (the paths the user named, or the scope the invoking skill passed). Done when every screen in scope has a screenshot or has been read.
-4. **Measure.** Run `node scripts/tokens.mjs <ui-src>` for distinct colors, neutrals, radii, shadows, fonts, sizes, and unused CSS variables. Run `node scripts/scan.mjs <ui-src>` for lexical tells. Find the project's scale (Tailwind config, CSS variables, theme file) so the counts have something to compare against.
-5. **Findings.** List each finding as `screen or path:line  ui-N  what  →  fix`, tagged craft or template. Every scanner hit is judged, and every screenshot is checked against the template tells the scanner can't see (`ui-2`, `-3`, `-9`, `-10`, `-12`, `-14`, `-18`).
+4. **Measure.** Run `node scripts/tokens.mjs <ui-src>` for distinct colors, neutrals, radii, shadows, fonts, sizes, unused CSS variables, and which files animate without a `prefers-reduced-motion` path. Run `node scripts/scan.mjs <ui-src>` for lexical tells. Find the project's scale (Tailwind config, CSS variables, theme file) so the counts have something to compare against. Done when you can say how many values the scale defines per category.
+5. **Findings.** List each finding as `screen or path:line  ui-N  what  ->  fix`, tagged craft or template. Every scanner hit is judged, and every screenshot is checked against the template tells the scanner can't see (`ui-2`, `-3`, `-9`, `-10`, `-12`, `-14`, `-18`).
 6. **Fix craft tells.**
    - Map raw values onto the existing scale.
    - Add the missing states.
    - Restore visible focus, and use native elements with accessible names.
    - Fix contrast to WCAG AA.
-   - Respect `prefers-reduced-motion`.
+   - Respect `prefers-reduced-motion`. One rule in the base stylesheet covers CSS animations; animation libraries need their own switch (`useReducedMotion` in Motion, for example).
    - For copy, run the `unslop-text` skill (sibling folder `../unslop-text/`) on every user-facing string. Apply `ui-20` alongside it.
 7. **Template tells.** Write a short direction grounded in step 1: 4 to 6 named hex colors, the type family and scale, the layout idea, and the one element meant to be memorable. Show it to the user. Restyle only after they agree, or right away if they already asked for a redesign.
 8. **Verify.** Re-take the screenshots and compare them with the originals. Build, lint, and tests stay green. Run `tokens.mjs` again; the distinct counts should drop toward the scale.

@@ -6,7 +6,7 @@ Ids are stable: other skills and reports cite them, and a retired tell leaves a 
 ## Content
 
 - **text-1 Inflated significance (L).** "plays a pivotal role", "marks a significant milestone", "in today's fast-paced world", "stands as a testament to". Fix: state what happened and to whom, or cut.
-- **text-2 Trailing -ing commentary (L).** A clause tacked on to interpret the sentence: "…, ensuring a smooth experience", "…, highlighting its importance". Fix: delete it, or make it a sentence with a real subject and evidence.
+- **text-2 Trailing -ing commentary (L).** A clause tacked on after a comma or dash to interpret the sentence: ", ensuring a smooth experience", ", highlighting its importance". Fix: delete it, or make it a sentence with a real subject and evidence.
 - **text-3 Vague attribution (L).** "Experts say", "studies show", "many developers find". Fix: name the source and link it, or cut the claim.
 - **text-4 Feeling instead of fact.** "SQL you can read", "the API stays out of your way". Fix: name the mechanism or the number ("`.toSQL()` returns the exact query sent"). If a sentence could appear unchanged in another project's docs, it says nothing about this one. Cut it.
 - **text-5 Promotional register (L).** seamless, robust, powerful, cutting-edge, game-changing, blazing fast, effortless, supercharge, unlock, unleash, elevate, empower. Fix: the plain claim with its evidence, or nothing.
@@ -35,7 +35,7 @@ Ids are stable: other skills and reports cite them, and a retired tell leaves a 
   | meticulous, vibrant, bustling, ever-evolving | the specific trait, or cut |
   | paradigm, synergy, north star, game changer | the concrete idea |
 
-- **text-11 Copula dodging (L).** "serves as", "stands as", "acts as", "boasts", "features". Fix: "is", "has".
+- **text-11 Copula dodging (L).** "serves as", "stands as", "acts as", "boasts", "features". Fix: "is", "has". The scanner skips "to serve as", which is usually a real purpose clause.
 - **text-12 Negative parallelism (L).** "not just X, but Y", "It's not X. It's Y.", "isn't about X, it's about Y". Fix: state Y.
 - **text-13 Forced triads.** Lists of three where the content has two or four, or three near-synonyms ("fast, efficient, and performant"). Fix: the natural count.
 - **text-14 Synonym cycling.** The same thing renamed each sentence: "the tool… the utility… the solution". Fix: pick one name and repeat it.
@@ -43,10 +43,11 @@ Ids are stable: other skills and reports cite them, and a retired tell leaves a 
 - **text-16 Hedge stacks (L).** "could potentially", "may possibly", "it could be argued that". Fix: one hedge where doubt is real, none where it is not.
 - **text-17 Filler phrases (L).** "in order to" (to), "due to the fact that" (because), "it is important to note that" (cut), "when it comes to" (for), "a wide range of" (many, or the list).
 - **text-18 Intensifiers (L).** truly, incredibly, extremely, seamlessly, remarkably, absolutely. Fix: cut the adverb or use the stronger verb or the number.
+- **text-33 Stacked connectives (L).** Sentences opened with "Additionally,", "Furthermore,", "Moreover,", "Ultimately,", "That being said,". One is fine in a long argument; a run of them is padding between points that already follow each other. Fix: delete the connective, or merge the two sentences.
 
 ## Rhythm
 
-- **text-19 Em dashes (L).** Fix: a period or a comma. Parentheses for a true aside.
+- **text-19 Em dashes (L).** The scanner reports every em dash, and every spaced en dash or double hyphen used as one. Fix: a period or a comma. Parentheses for a true aside. The only keep is a dash inside quoted material, which the rewrite leaves byte-for-byte anyway.
 - **text-20 Staccato fragments (L).** "No config. No boilerplate. Just code." Fix: one sentence with a verb.
 - **text-21 Passive voice hiding the actor.** "queries are validated" when the actor matters. Fix: name the actor ("the compiler validates queries").
 - **text-22 Dense sentences.** The reader has to backtrack to parse it. Fix: one idea per sentence; split or drop clauses.
@@ -55,8 +56,8 @@ Ids are stable: other skills and reports cite them, and a retired tell leaves a 
 ## Formatting
 
 - **text-24 Bold sprinkling.** Bold on every term, product name, or "key" phrase. Fix: bold at most the one thing a skimmer must not miss.
-- **text-25 Inline-header lists (L).** "- **Performance:** Performance improved by…": a bold label that the line then restates. Fix: plain bullets or prose. A bold lead-in that names the item and is followed by new detail is fine.
-- **text-26 Title Case headings (L).** "Getting Started With The API". Fix: sentence case ("Getting started with the API").
+- **text-25 Inline-header lists (L).** "- **Performance:** Performance improved by 20%": a bold label that the line then restates. The scanner reports a label only when one of its words reappears in the first eight words of the detail, so "- **Discord**: join the server" stays silent. Fix: plain bullets or prose. A bold lead-in that names the item and is followed by new detail is fine.
+- **text-26 Title Case headings (L).** "Getting Started With The API". Fix: sentence case ("Getting started with the API"). The scanner reports a heading when a small word ("With", "The") is capitalized, or when most of its words appear lowercased in the body (so "Using Visual Studio Code" stays silent). More than five such headings in one file come back as one hit, because that is a convention to decide on once, and a repo style guide that mandates Title Case wins.
 - **text-27 Decorative emoji (L).** Emoji in headings and bullets (🚀 ✨ 💡 ✅). Fix: remove them.
 - **text-28 Typographic residue (L).** Curly quotes, `…`, `→` in plain-text sources (Markdown, comments, commit messages). Fix: straight quotes, `...`, "to".
 - **text-29 Over-structure.** Headings over a three-paragraph doc, bullets for what is one sentence, nested bullets three deep, a table with one column. Fix: prose until structure helps the reader find something.

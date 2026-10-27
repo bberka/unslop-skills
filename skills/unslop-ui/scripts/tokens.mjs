@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 // Design-token inventory: how many distinct colors, neutrals, radii, shadows,
 // font families, font sizes, weights, z-indexes, and arbitrary values a UI uses,
-// plus CSS custom properties that are defined but never read.
+// CSS custom properties that are defined but never read, and which files animate
+// versus which handle prefers-reduced-motion.
 // Usage: node tokens.mjs [--json] [--top N] [paths...]
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, relative, resolve } from "node:path";
 
 const FILES = /\.(?:css|scss|sass|less|html?|jsx|tsx|vue|svelte|astro|razor|cshtml)$|tailwind\.config\.[cm]?[jt]s$/i;
-const SKIP = /(?:^|[\\/])(?:node_modules|\.git|dist|build|out|coverage|\.next|\.nuxt|\.svelte-kit|vendor|storybook-static)(?:[\\/]|$)|\.min\.css$/;
+const SKIP = /(?:^|[\\/])(?:node_modules|\.git|dist|build|out|coverage|\.next|\.nuxt|\.svelte-kit|vendor|storybook-static|__tests__|__mocks__|__fixtures__|tests?|e2e|playwright|cypress)(?:[\\/]|$)|\.min\.css$|\.(?:test|spec|e2e|stories)\.[jt]sx$/;
+// Compiled Tailwind output restates every utility the project uses.
+const GENERATED = /^\/\*! tailwindcss v/;
 const args = process.argv.slice(2);
 const json = args.includes("--json");
 const topAt = args.indexOf("--top");
@@ -46,6 +49,12 @@ const categories = {
 const varsDefined = new Map();
 const varsUsed = new Set();
 let rawColorsOutsideVars = 0;
+const animatedFiles = new Set();
+const reducedMotionFiles = new Set();
+const GENERIC_FAMILIES = new Set(["inherit", "initial", "unset", "revert"]);
+// Bracket contents that are values (sizes, colors, var() refs), as opposed to
+// variant selectors such as data-[state=open] or has-[>svg].
+const ARBITRARY_VALUE = /^(?:-?\d|#|var\(|calc\(|--|url\(|rgb|hsl|oklch|['"])/;
 
 function bump(cat, value, file) {
   const key = value.trim().replace(/\s+/g, " ");
@@ -70,7 +79,10 @@ function isNeutralHex(h) {
 for (const file of files) {
   let text;
   try { text = readFileSync(file, "utf8"); } catch { continue; }
-  if (text.length > 2_000_000) continue;
+  if (text.length > 2_000_000 || GENERATED.test(text)) continue;
+  const rel = relative(process.cwd(), file);
+  if (/@keyframes|\banimation\s*:|\banimate-\w+|from ['"](?:framer-motion|motion\/react)['"]/.test(text)) animatedFiles.add(rel);
+  if (/prefers-reduced-motion|motion-reduce:|motion-safe:|useReducedMotion|reducedMotion/.test(text)) reducedMotionFiles.add(rel);
 
   for (const line of text.split("\n")) {
     const definesVar = /^\s*--[\w-]+\s*:/.test(line);
@@ -93,12 +105,15 @@ for (const file of files) {
     }
 
     for (const m of line.matchAll(/border(?:-[a-z-]+)?-radius\s*:\s*([^;}"']+)/g)) bump("radii", m[1], file);
-    for (const m of line.matchAll(/(?<![\w-])rounded(?:-[trblse]{1,2})?(?:-(none|sm|md|lg|xl|2xl|3xl|full|\[[^\]]+\]))?(?![\w-])/g)) bump("radii", m[0].replace(/^rounded-[trblse]{1,2}/, "rounded"), file);
+    for (const m of line.matchAll(/(?<![\w-])rounded(?:-[trblse]{1,2}(?=-|$|[^\w-]))?(?:-(none|xs|sm|md|lg|xl|[2-4]xl|full|\[[^\]]+\]))?(?![\w-])/g)) bump("radii", m[0].replace(/^rounded-[trblse]{1,2}(?=-|$)/, "rounded"), file);
 
     for (const m of line.matchAll(/box-shadow\s*:\s*([^;}"']+)/g)) bump("shadows", m[1], file);
     for (const m of line.matchAll(/(?<![\w-])shadow(?:-(xs|sm|md|lg|xl|2xl|inner|none|\[[^\]]+\]))?(?![\w-])/g)) bump("shadows", m[0], file);
 
-    for (const m of line.matchAll(/font-family\s*:\s*([^;}]+)/g)) bump("fontFamilies", m[1].split(",")[0].replace(/['"]/g, ""), file);
+    for (const m of line.matchAll(/font-family\s*:\s*([^;}]+)/g)) {
+      const family = m[1].split(",")[0].replace(/['"]/g, "").trim();
+      if (!GENERIC_FAMILIES.has(family)) bump("fontFamilies", family, file);
+    }
     for (const m of line.matchAll(/(?<![\w-])font-(sans|serif|mono|\[[^\]]+\])(?![\w-])/g)) bump("fontFamilies", m[0], file);
     for (const m of line.matchAll(/import\s*\{([^}]+)\}\s*from\s*['"]next\/font\/google['"]/g)) m[1].split(",").forEach((f) => f.trim() && bump("fontFamilies", f.trim(), file));
     for (const m of line.matchAll(/fonts\.googleapis\.com\/css2?\?family=([^&:"')]+)/g)) bump("fontFamilies", decodeURIComponent(m[1]).replace(/\+/g, " "), file);
@@ -112,7 +127,7 @@ for (const file of files) {
     for (const m of line.matchAll(/z-index\s*:\s*(-?\d+)/g)) bump("zIndex", m[1], file);
     for (const m of line.matchAll(/(?<![\w-])-?z-(\d+|\[-?\d+\])(?![\w-])/g)) bump("zIndex", m[0], file);
 
-    for (const m of line.matchAll(/\b[a-z][\w-]*-\[[^\]\s]+\]/g)) bump("arbitrary", m[0], file);
+    for (const m of line.matchAll(/\b[a-z][\w-]*-\[([^\]\s]+)\]/g)) if (ARBITRARY_VALUE.test(m[1])) bump("arbitrary", m[0], file);
   }
 }
 
@@ -123,6 +138,7 @@ const summarize = (map) => [...map.entries()].sort((a, b) => b[1].count - a[1].c
 const report = Object.fromEntries(Object.entries(categories).map(([k, v]) => [k, summarize(v)]));
 report.cssVariables = { defined: varsDefined.size, used: varsUsed.size, unused: unusedVars };
 report.rawColorsOutsideVariableDefinitions = rawColorsOutsideVars;
+report.motion = { animatedFiles: [...animatedFiles], reducedMotionFiles: [...reducedMotionFiles] };
 report.filesScanned = files.length;
 
 if (json) {
@@ -147,4 +163,6 @@ for (const [key, label] of Object.entries(LABELS)) {
 }
 console.log(`CSS variables: ${varsDefined.size} defined, ${unusedVars.length} never read${unusedVars.length ? ": " + unusedVars.slice(0, 15).map((v) => "--" + v).join(", ") : ""}`);
 console.log(`Raw color literals outside variable definitions: ${rawColorsOutsideVars}`);
+const rm = [...reducedMotionFiles];
+console.log(`Motion: ${animatedFiles.size} files animate; prefers-reduced-motion handled in ${rm.length}${rm.length ? ": " + rm.slice(0, 5).join(", ") + (rm.length > 5 ? `, +${rm.length - 5} more` : "") : " (ui-19 applies to every animated file)"}`);
 console.log("\nCompare each count with the project's defined scale. More distinct values than the scale defines is ui-13 sprawl.");

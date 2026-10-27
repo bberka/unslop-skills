@@ -25,3 +25,14 @@ export async function loadAll(ids: string[]): Promise<User[]> {
   const users = await Promise.all(ids.map((id) => db.find(id)));
   return users.filter((u): u is User => u !== undefined);
 }
+
+// `animate` defaults to on, so only an explicit false disables it.
+export function shouldAnimate(opts?: { animate?: boolean }): boolean {
+  return opts?.animate !== false;
+}
+
+export function regionOf(order: { customer?: { address?: { region?: string } } }) {
+  // TODO(berg): fall back to the billing address once the API exposes it.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- the API omits address for guests
+  return order.customer?.address?.region ?? "unknown";
+}

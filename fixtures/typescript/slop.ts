@@ -35,7 +35,7 @@ export function hasAdmins(users: { role: string }[]) {
 }
 
 export function cityOf(order: any) {
-  return order?.customer?.address?.city;
+  return order?.customer?.address?.city?.name;
 }
 
 export function load(): Promise<string> {
@@ -59,6 +59,7 @@ export function parse(raw: string) {
 
 export class DataManager {
   // TODO: implement caching
+  // eslint-disable-next-line
   save() {
     // In a real app you would persist this
     throw new Error("Not implemented");

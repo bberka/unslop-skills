@@ -32,4 +32,18 @@ public class UserServiceTests
         var svc = new UserService();
         Assert.NotNull(svc);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void LoadsEveryUser(int id)
+    {
+        new UserService().Load(id);
+    }
+
+    //[Fact] - broken since the cache rewrite
+    public void RefreshesTwice()
+    {
+        new UserService().Refresh();
+    }
 }

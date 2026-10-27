@@ -9,9 +9,9 @@ Ids are stable, and reports cite them. **(L)** marks the tells `scripts/scan.mjs
 - **react-2 Props mirrored into state (L).** `useState(props.value)`, or an effect that copies a prop into state. Fix: read the prop. To reset state when an identity changes, pass a `key`.
 - **react-3 Effects as event handlers.** An effect watches a flag and then posts, navigates, or toasts. Fix: do the work in the handler that set the flag.
 - **react-4 Hand-rolled fetching (L).** `fetch` in `useEffect` with loading and error booleans, in a project that already has a data layer (TanStack Query, SWR, server components, route loaders). Fix: the project's pattern. With no data layer, handle abort and races.
-- **react-5 Boolean soup (L).** `isLoading`, `isError`, `isSuccess`, `isEmpty` as separate states that can contradict each other. Fix: one status union, or `useReducer`.
+- **react-5 Boolean soup (L).** `isLoading`, `isError`, `isSuccess`, `isEmpty` as separate states that can contradict each other (the scanner counts three or more boolean `useState` calls in one component). Fix: one status union, or `useReducer`.
 - **react-6 Duplicated state.** The same data held twice (a list plus the selected object instead of the selected id), or state that could be derived. Fix: store the minimum and derive the rest.
-- **react-7 Silenced dependency lint (L).** `eslint-disable-next-line react-hooks/exhaustive-deps`. Fix: restructure. Move the function inside the effect, use an effect-event pattern, or find that the effect isn't needed (react-1, react-3).
+- **react-7 Silenced dependency lint (L).** `eslint-disable-next-line react-hooks/exhaustive-deps`. Fix: restructure. Move the function inside the effect, use `useEffectEvent` (React 19.2) for the non-reactive part, or find that the effect isn't needed (react-1, react-3).
 
 ## Performance theater
 
@@ -19,9 +19,9 @@ Ids are stable, and reports cite them. **(L)** marks the tells `scripts/scan.mjs
 
 ## Components
 
-- **react-9 Near-duplicate components (I, D).** `PrimaryButton`, `SubmitButton`, and `BlueButton` differing by one class; copy-pasted cards, modals, or list rows; a hand-built version of a component the design system (`components/ui`, shadcn, an internal kit) already ships. Fix: one component with variants, or the existing one.
-- **react-10 God components (I).** Over 300 lines, six or more `useState`, and fetching, state logic, and layout in one function. Fix: extract the data hook and the presentational pieces along real seams.
-- **react-11 Components defined inside components (L).** They remount on every render and lose their state. Fix: move them to module scope and pass props.
+- **react-9 Near-duplicate components (I, D).** `PrimaryButton`, `SubmitButton`, and `BlueButton` differing by one class; copy-pasted cards, modals, or list rows; a hand-built version of a component the design system (`components/ui`, shadcn, an internal kit) already ships. `jscpd --similarity` finds the pairs that differ only in names and literals. Fix: one component with variants, or the existing one.
+- **react-10 God components (L, I).** Over 300 lines, six or more `useState`, and fetching, state logic, and layout in one function. Both tools measure each component, so a long file of small components is not a hit. Fix: extract the data hook and the presentational pieces along real seams.
+- **react-11 Components defined inside components (L).** They remount on every render and lose their state. The render function handed to `forwardRef` or `memo` is not one. Fix: move them to module scope and pass props.
 - **react-12 Wrapper and div soup (L).** Components that only pass props through, nested `div`s with no styling or semantics, a Fragment around a single child. Fix: delete the layer.
 - **react-13 Prop drilling or context for everything.** A prop threaded through three or more components that don't read it, or a context created for state one subtree uses. Fix: composition (`children`, slots) first. Use context for state that is truly cross-cutting.
 - **react-14 Hooks that aren't hooks.** A `useX` that calls no hooks, or a custom hook that wraps one `useState`. Fix: a plain function, or inline it.
@@ -30,7 +30,7 @@ Ids are stable, and reports cite them. **(L)** marks the tells `scripts/scan.mjs
 
 ## JSX
 
-- **react-17 Index keys (L).** `key={index}` on lists that reorder, insert, or delete. Fix: a stable id.
-- **react-18 Redundant handler arrows (L).** `onClick={() => handleClick()}`. Fix: `onClick={handleClick}`.
+- **react-17 Index keys (L).** `key={index}` on lists that reorder, insert, or delete. Static lists (skeleton rows, `Array.from({ length })`) keep index keys, and the scanner skips those. Fix: a stable id.
+- **react-18 Redundant handler arrows (L).** `onClick={() => handleClick()}`. Fix: `onClick={handleClick}`. The arrow stays when the callee takes optional arguments (`refetch`, `reset`, `mutate`), because passing it directly hands it the event. The scanner only reports `handle*` and `on*` callees.
 - **react-19 Hand-assembled class strings (L).** Template-literal ternaries in `className` when the project has `cn`, `clsx`, or `cva`. Fix: the project's helper.
 - **react-20 Leaky conditionals (L).** `{items.length && <List />}` renders `0`. Fix: `{items.length > 0 && <List />}`.

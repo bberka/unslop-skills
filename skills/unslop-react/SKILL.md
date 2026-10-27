@@ -16,15 +16,15 @@ Each tell has a stable id (`react-9`) in [TELLS.md](TELLS.md). Fixes are **refac
 3. **Learn the project's patterns.** The right fix depends on them. Find out:
    - The React version. React 19 passes `ref` as a prop, so `forwardRef` is not needed.
    - The data layer (TanStack Query, SWR, server components, loaders).
-   - The class helper (`cn`, `clsx`, `cva`).
+   - The class helper (`cn`, `clsx`, `cva`, `tv`).
    - Whether React Compiler is on (`babel-plugin-react-compiler`, `reactCompiler` in the Next config).
    - The design-system folder.
 
    Done when you can name each one, or state that it is absent.
 4. **Inventory and scan.**
-   - Run `node scripts/inventory.mjs <paths>`. It lists components by size, groups the ones sharing a role suffix (`PrimaryButton`, `SubmitButton`), and shows names defined twice and the design-system folders.
+   - Run `node scripts/inventory.mjs <paths>`. It lists components by size, groups the ones sharing a role suffix (`PrimaryButton`, `SubmitButton`), and shows names defined twice and the design-system folders. `--json` lists every member of a group.
    - Run `node scripts/scan.mjs <paths>` for lexical tells.
-   - Run `npx jscpd --gitignore --min-tokens 40 --format "tsx,jsx" <paths>` for copy-pasted JSX.
+   - Run `npx jscpd --min-tokens 40 --format "tsx,jsx" --similarity <paths>`. The token clones are copy-pasted JSX; the `similar` clones are components that differ only in names and literals. It respects `.gitignore` by default.
 5. **Judge duplicates.** For every inventory group and clone pair, open the members side by side and decide: merge into one component with variants, replace with the design-system component, or keep (with the behavioral difference that justifies it). Then read every component in scope for the tells no tool sees: `react-3`, `-6`, `-9`, `-13` to `-16`. Done when every group and every hit has a verdict.
 6. **Fix in batches,** with the smallest blast radius first:
    1. JSX: `react-17` to `react-20`.

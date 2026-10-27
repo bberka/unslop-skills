@@ -12,3 +12,16 @@ toolkit check ./src
 ## Configuration
 
 The CLI reads `toolkit.config.js` from the project root. The only required key is `include`, a list of globs.
+
+- **Default:** `["src/**"]`
+- **Discord:** join the server to ask about config keys that are not documented yet.
+
+The config file is meant to serve as the single place for project settings.
+
+## Using Visual Studio Code
+
+The extension reads the same config file. In the status table, `🚫` marks a check that is off and `✅` one that is on:
+
+| Check | Status |
+| --- | --- |
+| `::` + [`ipv6Only`](https://example.org/ipv6) | 🚫 |

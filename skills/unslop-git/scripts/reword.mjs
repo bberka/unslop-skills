@@ -3,9 +3,10 @@
 // Usage: node reword.mjs <messages.json> [--allow-pushed]
 //   messages.json maps commit shas (full or abbreviated) to complete new messages:
 //   { "a1b2c3d": "Reject expired tokens in auth middleware\n\nThe old check compared...", ... }
-// Safety: requires a clean worktree, refuses ranges containing merges, refuses
-// commits already on a remote branch unless --allow-pushed, and saves the old
-// HEAD under refs/unslop/backup-<timestamp> before rebasing.
+// Safety: requires a clean worktree (untracked files are fine, since trees never
+// change), refuses ranges containing merges, refuses commits already on a remote
+// branch unless --allow-pushed, and saves the old HEAD under
+// refs/unslop/backup-<timestamp> before rebasing. Needs git 2.38 or later.
 import { readFileSync, writeFileSync, mkdtempSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -26,7 +27,7 @@ if (process.argv[2] === "--todo") {
     const m = /^(?:p|pick)\s+([0-9a-f]+)/.exec(line);
     if (!m) continue;
     const entry = plan.find((e) => e.sha.startsWith(m[1]) || m[1].startsWith(e.sha));
-    if (entry) out.push(`exec git commit --amend --no-verify --allow-empty --quiet -F "${entry.file}"`);
+    if (entry) out.push(`exec git commit --amend --no-verify --allow-empty --quiet --cleanup=whitespace -F "${entry.file}"`);
   }
   writeFileSync(todo, out.join("\n"));
   process.exit(0);
@@ -37,7 +38,7 @@ if (!input) fail("usage: node reword.mjs <messages.json> [--allow-pushed]");
 const allowPushed = process.argv.includes("--allow-pushed");
 const messages = JSON.parse(readFileSync(input, "utf8"));
 
-if (git("status", "--porcelain")) fail("worktree is not clean; commit or stash first");
+if (git("status", "--porcelain", "--untracked-files=no")) fail("worktree has uncommitted changes; commit or stash them first");
 const gitDir = git("rev-parse", "--git-dir");
 if (["rebase-merge", "rebase-apply"].some((d) => existsSync(join(gitDir, d)))) fail("a rebase is already in progress");
 

@@ -1,4 +1,7 @@
-export function Inventory({ items }: { items: { sku: string; name: string; onHand: number }[] }) {
+export function Inventory({ items, loading }: { items: { sku: string; name: string; onHand: number }[]; loading?: boolean }) {
+  if (loading) {
+    return <div className="skeleton h-6 animate-pulse motion-reduce:animate-none rounded-sm bg-stone-200" aria-busy="true" />;
+  }
   if (items.length === 0) {
     return (
       <section className="p-6">
@@ -7,6 +10,18 @@ export function Inventory({ items }: { items: { sku: string; name: string; onHan
         <a className="underline focus-visible:outline-2" href="/import">
           Import SKUs
         </a>
+        <label>
+          Supplier email
+          <input
+            type="email"
+            placeholder="orders@example.com"
+            className={[
+              "rounded-sm border border-stone-400 px-2 py-1 outline-none",
+              "focus-visible:ring-2 focus-visible:ring-stone-700",
+              "text-stone-900 dark:text-gray-300",
+            ].join(" ")}
+          />
+        </label>
       </section>
     );
   }

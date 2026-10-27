@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Reports dead C# code (cs-7) without editing project files: unused usings,
-// private members, parameters, assignments, locals, and fields.
-// It writes a temporary .globalconfig next to the target (the SDK picks it up
-// for every project at or below that folder), runs one build with code-style
-// enforcement, removes the file, and prints the deduplicated diagnostics.
-// Usage: node dead-code.mjs [path/to/App.sln|App.csproj|folder]
-import { writeFileSync, rmSync, existsSync, statSync } from "node:fs";
+// Reports dead C# code (cs-7) without touching the repo: unused usings, private members,
+// parameters, assignments, locals, and fields.
+// It writes a global analyzer config and a one-item MSBuild targets file to a temp folder,
+// injects them into every project of one build through CustomAfterMicrosoftCommonTargets,
+// deletes the temp folder, and prints the deduplicated diagnostics. A severity the repo's own
+// .editorconfig sets for one of these ids wins over the injected config.
+// Usage: node dead-code.mjs [path/to/App.sln|App.slnx|App.csproj|folder]
+import { writeFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { dirname, resolve, relative } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve, relative } from "node:path";
 
 const IDS = {
   IDE0005: "unused using", IDE0051: "unused private member", IDE0052: "private member never read",
@@ -17,25 +19,23 @@ const IDS = {
 
 const target = resolve(process.argv[2] ?? ".");
 if (!existsSync(target)) { console.error(`dead-code: no such path: ${target}`); process.exit(2); }
-const folder = statSync(target).isDirectory() ? target : dirname(target);
-const config = resolve(folder, ".globalconfig");
-if (existsSync(config)) {
-  console.error(`dead-code: ${config} already exists. Add these severities to it by hand instead:`);
-  for (const id of Object.keys(IDS).filter((i) => i.startsWith("IDE"))) console.error(`  dotnet_diagnostic.${id}.severity = warning`);
-  process.exit(2);
-}
 
-writeFileSync(config, ["is_global = true", ...Object.keys(IDS).filter((i) => i.startsWith("IDE"))
-  .map((id) => `dotnet_diagnostic.${id}.severity = warning`)].join("\n") + "\n");
+const temp = mkdtempSync(join(tmpdir(), "unslop-dead-code-"));
+const config = join(temp, "unslop.globalconfig");
+const targets = join(temp, "unslop.targets");
+writeFileSync(config, ["is_global = true", "global_level = 1000",
+  ...Object.keys(IDS).filter((i) => i.startsWith("IDE")).map((id) => `dotnet_diagnostic.${id}.severity = warning`)].join("\n") + "\n");
+writeFileSync(targets, `<Project>\n  <ItemGroup>\n    <EditorConfigFiles Include="${config}" />\n  </ItemGroup>\n</Project>\n`);
 
 let result;
 try {
   result = spawnSync("dotnet", ["build", target, "--no-incremental", "-nologo",
     "-p:EnforceCodeStyleInBuild=true", "-p:GenerateDocumentationFile=true",
-    "-p:NoWarn=CS1591", "-p:TreatWarningsAsErrors=false", "-p:WarningsAsErrors="],
+    "-p:NoWarn=CS1591", "-p:TreatWarningsAsErrors=false", "-p:WarningsAsErrors=",
+    `-p:CustomAfterMicrosoftCommonTargets=${targets}`],
   { encoding: "utf8", maxBuffer: 1 << 28 });
 } finally {
-  rmSync(config, { force: true });
+  rmSync(temp, { recursive: true, force: true });
 }
 
 if (result.error) { console.error(`dead-code: could not run dotnet: ${result.error.message}`); process.exit(2); }
@@ -54,6 +54,10 @@ rows.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
 
 for (const r of rows) console.log(`${r.file}:${r.line}  cs-7 ${r.id}  ${r.message}`);
 console.log(`\n${rows.length} dead-code diagnostics.`);
+if (rows.length === 0 && /Unable to find a project to restore/.test(output)) {
+  console.error("The solution holds no projects. Point at a .csproj or a solution that lists them.");
+  process.exit(1);
+}
 if (result.status !== 0 && rows.length === 0) {
   console.error("The build failed before analyzers ran. Last lines of output:");
   console.error(output.trim().split("\n").slice(-15).join("\n"));

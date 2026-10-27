@@ -11,7 +11,7 @@ Agent skills that find and remove AI slop: patterns that mark text, interfaces, 
 | `unslop-react` | React components, hooks, near-duplicate components | `scan.mjs`, `inventory.mjs` |
 | `unslop-csharp` | C# and .NET code | `scan.mjs`, `dead-code.mjs` |
 | `unslop-tests` | Test suites in JS/TS, C#, Python, and Go | `scan.mjs` |
-| `unslop-all` | Runs the applicable skills in order, one commit per pass | `detect.mjs` |
+| `unslop-all` | Runs the applicable skills in order, one pass per skill, on a review branch when the user wants one | `detect.mjs` |
 
 ## How the skills call each other
 
@@ -35,7 +35,7 @@ npx skills add bberka/unslop-skills
 
 To install by hand, copy each folder under `skills/` into your agent's skills directory (`~/.agents/skills/`, `~/.claude/skills/`, or the project's `.claude/skills/`).
 
-Scripts need Node 20 or later. The language skills also use tools the project may already have: `npx knip` and `npx jscpd` for TypeScript, and the .NET SDK for C#.
+Scripts need Node 20 or later, and `reword.mjs` needs git 2.38 or later. The language skills also use tools the project may already have: `npx knip` and `npx jscpd` for TypeScript, and the .NET SDK for C#.
 
 ## Using them
 
@@ -49,11 +49,11 @@ Every code skill follows the same contract:
 4. List anything that changes public API, runtime behavior, or architecture as a proposal instead of applying it.
 5. Report fixed, proposed, and kept findings by tell id.
 
-Documented repo standards (lint config, `.editorconfig`, `CONTRIBUTING.md`) override any tell.
+Documented repo standards (lint config, `.editorconfig`, `CONTRIBUTING.md`) override any tell, with one exception: `unslop-git` removes AI tool attribution (`Co-authored-by` trailers and "Generated with" footers) whatever the history does, and never adds it.
 
 ### Silencing a hit
 
-The scanners skip a line containing `unslop-ignore` and a file containing `unslop-ignore-file`.
+The scanners skip a line containing `unslop-ignore` and a file containing `unslop-ignore-file`. The text scanner also skips changelogs (`CHANGELOG`, `HISTORY`, `RELEASE_NOTES`) on a directory walk, since release tooling writes those; naming one explicitly scans it.
 
 ### Commit-message hook
 

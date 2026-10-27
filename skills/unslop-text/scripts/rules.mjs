@@ -1,17 +1,50 @@
 // unslop-ignore-file
 // Lexical text tells for scan.mjs. Ids match ../TELLS.md.
-const files = /\.(md|mdx|markdown|txt|rst|adoc)$/i;
-const SMALL_WORDS = new Set(["with", "from", "into", "onto", "over", "than", "that", "this", "your", "upon", "when"]);
+// Changelogs (CHANGELOG, CHANGES, HISTORY, RELEASE_NOTES) are release-tool output, so a
+// directory walk skips them. Naming one on the command line still scans it.
+const files = /^(?!(?:.*\/)?(?:CHANGELOG|CHANGES|HISTORY|RELEASE[-_]?NOTES)[^/]*$).*\.(?:md|mdx|markdown|txt|rst|adoc)$/i;
+const SMALL_WORDS = new Set(["a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "of", "on", "onto", "or", "over", "than", "that", "the", "this", "to", "upon", "vs", "when", "with", "your"]);
+const LIST_ITEM = /^\s*(?:[-*+]|\d+\.)\s/;
 
+// A heading is Title Case when its later words are capitalized and either a small word
+// ("With", "The") is capitalized too, or most of its words appear lowercased in the body
+// (so they are common words, not a product name like "Visual Studio Code").
 function titleCaseHeadings(text) {
   const hits = [];
-  text.split("\n").forEach((line, i) => {
+  const lines = text.split("\n");
+  const bodyWords = new Set();
+  for (const line of lines) {
+    if (/^#{1,6}\s/.test(line)) continue;
+    for (const w of line.match(/\b[a-z]{4,}\b/g) ?? []) bodyWords.add(w);
+  }
+  lines.forEach((line, i) => {
     const m = /^#{1,6}\s+(.+?)\s*#*\s*$/.exec(line);
     if (!m) return;
-    const words = m[1].split(/\s+/).slice(1)
-      .map((w) => w.replace(/[^A-Za-z]/g, ""))
-      .filter((w) => w.length >= 4 && !SMALL_WORDS.has(w.toLowerCase()) && w !== w.toUpperCase());
-    if (words.length >= 2 && words.every((w) => /^[A-Z]/.test(w))) hits.push({ line: i + 1, match: m[1] });
+    const words = m[1].split(/\s+/).map((w) => w.replace(/[^A-Za-z]/g, "")).filter(Boolean);
+    const isCandidate = (w) => w.length >= 4 && !SMALL_WORDS.has(w.toLowerCase()) && w !== w.toUpperCase();
+    const later = words.slice(1).filter(isCandidate);
+    if (!later.length || !later.every((w) => /^[A-Z]/.test(w))) return;
+    const capitalizedSmall = words.slice(1).some((w) => SMALL_WORDS.has(w.toLowerCase()) && /^[A-Z]/.test(w));
+    const all = words.filter(isCandidate);
+    const common = all.filter((w) => bodyWords.has(w.toLowerCase())).length;
+    if (capitalizedSmall || (all.length >= 2 && common > all.length / 2)) hits.push({ line: i + 1, match: m[1] });
+  });
+  // A file where most headings are Title Case follows a convention: one hit, so the
+  // reader decides once instead of judging the same thing twenty times.
+  if (hits.length > 5) return [{ line: hits[0].line, match: `${hits.length} Title Case headings in this file` }];
+  return hits;
+}
+
+// "- **Performance:** Performance is fast." The label is repeated in the first words of
+// the detail. A label followed by new detail ("- **Discord**: join the server") is fine.
+function restatedLabels(text) {
+  const hits = [];
+  text.split("\n").forEach((line, i) => {
+    const m = /^\s*(?:[-*+]|\d+\.)\s+\*\*([^*]+?)(?::\*\*|\*\*:)\s*(.*)$/.exec(line);
+    if (!m) return;
+    const label = m[1].toLowerCase().match(/[a-z][a-z-]{3,}/g) ?? [];
+    const lead = m[2].toLowerCase().split(/\s+/).slice(0, 8).map((w) => w.replace(/[^a-z-]/g, ""));
+    if (label.length && label.some((w) => lead.includes(w))) hits.push({ line: i + 1, match: m[0].trim().slice(0, 60) });
   });
   return hits;
 }
@@ -20,7 +53,7 @@ export default [
   { id: "text-1", title: "Inflated significance", files, prose: true,
     pattern: /\b(?:plays? an? (?:crucial|pivotal|key|vital|significant|central|important) role|marks? an? (?:significant|major|important|key) (?:milestone|step|shift)|in today's (?:fast-paced|digital|modern|ever-changing|rapidly evolving)|stands? as an? (?:testament|reminder)|a testament to|cannot be overstated|at the forefront of|paves? the way)\b/i },
   { id: "text-2", title: "Trailing -ing commentary", files, prose: true,
-    pattern: /,\s+(?:ensuring|highlighting|underscoring|showcasing|reflecting|emphasi[sz]ing|fostering|demonstrating|illustrating|cementing|solidifying|reinforcing|making it (?:easier|possible|ideal))\b/i },
+    pattern: /[,—]\s*(?:ensuring|highlighting|underscoring|showcasing|reflecting|emphasi[sz]ing|fostering|demonstrating|illustrating|cementing|solidifying|reinforcing|making it (?:easier|possible|ideal))\b/i },
   { id: "text-3", title: "Vague attribution", files, prose: true,
     pattern: /\b(?:(?:experts|researchers|studies|critics|observers|many (?:developers|users|people|experts)|industry (?:reports|experts)|some)\s+(?:say|said|suggest|believe|argue|agree|have shown|show|note|find)|it is widely (?:believed|accepted|known|regarded))\b/i },
   { id: "text-5", title: "Promotional register", files, prose: true,
@@ -34,7 +67,7 @@ export default [
   { id: "text-10", title: "AI vocabulary", files, prose: true,
     pattern: /\b(?:delv(?:e|es|ed|ing)|leverag(?:e|es|ed|ing)|utili[sz](?:e|es|ed|ing|ation)|facilitat(?:e|es|ed|ing)|pivotal|paramount|crucial|holistic|intricate|intricacies|nuanced|multifaceted|tapestry|realm|landscape|embark(?:s|ed|ing)?|foster(?:s|ed|ing)?|bolster(?:s|ed|ing)?|cultivat(?:e|es|ed|ing)|testament|underscor(?:e|es|ed|ing)|showcas(?:e|es|ed|ing)|streamlin(?:e|es|ed|ing)|meticulous(?:ly)?|vibrant|bustling|ever[- ]evolving|paradigm|synerg(?:y|ies)|north star|comprehensive|navigat(?:e|es|ing) the|enhanc(?:e|es|ed|ing))\b/i },
   { id: "text-11", title: "Copula dodging", files, prose: true,
-    pattern: /\b(?:serves? as|serving as|stands? as|boasts?|boasting)\b/i },
+    pattern: /(?<!\bto )\b(?:serves?|serving|stands?) as\b|\bboast(?:s|ing)?\b/i },
   { id: "text-12", title: "Negative parallelism", files, prose: true,
     pattern: /\bnot (?:just|only|merely|simply) [^.,;:!?]{1,60}?,?\s+but(?: also)?\b|\b(?:it|this)(?:'s| is) not (?:just )?(?:about )?[^.;!?]{1,50}?[.,;—–-]+\s*(?:it|this)(?:'s| is)\b|\bisn't (?:just )?about\b/i },
   { id: "text-15", title: "False range", files, prose: true,
@@ -48,12 +81,11 @@ export default [
   { id: "text-19", title: "Em dash", files, prose: true, pattern: /—|\s–\s|\s--\s/ },
   { id: "text-20", title: "Staccato fragments", files, prose: true,
     pattern: /\b(?:No|Zero) [\w-]+(?: [\w-]+)?\. (?:No|Zero|Just) [\w-]+|(?:^|\s)(?:[A-Z][a-z]+\.\s+){2}[A-Z][a-z]+\.(?:\s|$)/ },
-  { id: "text-25", title: "Inline-header list item", files, prose: true,
-    pattern: /^\s*(?:[-*+]|\d+\.)\s+\*\*[^*]+?(?::\*\*|\*\*:)/ },
+  { id: "text-25", title: "Inline-header list item", files, prose: true, check: restatedLabels },
   { id: "text-26", title: "Title Case heading", files, prose: true, check: titleCaseHeadings },
   { id: "text-27", title: "Decorative emoji", files, prose: true,
     pattern: /^\s*(?:#{1,6}|[-*+]|\d+\.)\s.*?\p{Extended_Pictographic}/u,
-    filter: (m) => !/[©®™]$/.test(m) },
+    filter: (m, line) => !/[©®™]$/.test(m) && (LIST_ITEM.test(line) || /^#{1,6}\s/.test(line)) },
   { id: "text-28", title: "Typographic residue", files, prose: true, pattern: /[“”‘’…→]/ },
   { id: "text-30", title: "Chatbot residue", files, prose: true,
     pattern: /\b(?:Certainly|Of course|Absolutely|Sure)!|\b(?:great question|good question|i hope this helps|hope this helps|let me know if|feel free to|happy to help|i'd be happy to|you're absolutely right)\b/i },
@@ -62,4 +94,6 @@ export default [
   { id: "text-32", title: "Placeholder", files, prose: true,
     pattern: /\[(?:your|insert|company|product|name|date|link|author)\b[^\]]*\]|\blorem ipsum\b|\bexample\.com\b/i },
   { id: "text-32", title: "Placeholder", files, prose: true, pattern: /\b(?:TBD|TODO|FIXME|XXX)\b/ },
+  { id: "text-33", title: "Stacked connective", files, prose: true,
+    pattern: /(?:^(?:\s*[-*+]\s+)?|[.!?]\s+)(?:Additionally|Furthermore|Moreover|Importantly|Ultimately|That being said|With that said),/ },
 ];

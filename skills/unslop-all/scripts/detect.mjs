@@ -39,7 +39,8 @@ const TEST = /(?:^|\/)(?:__tests__|tests?|specs?|e2e)\/.*\.(?:[cm]?[jt]sx?|py|cs
 const sourceJs = files.filter((f) => /\.(?:[cm]?tsx?|[cm]?jsx?)$/i.test(f) && !/\.d\.[cm]?ts$/.test(f) && !TEST.test(f) && !/(?:^|\/)[\w.-]+\.config\.[cm]?[jt]s$/.test(f));
 const sourceCs = files.filter((f) => /\.cs$/i.test(f) && !TEST.test(f));
 const tests = files.filter((f) => TEST.test(f));
-const docs = files.filter((f) => /\.(?:md|mdx|markdown|txt|rst|adoc)$/i.test(f) && !/(?:^|\/)(?:LICENSE|NOTICE|THIRD[-_]PARTY)/i.test(f));
+// Changelogs are skipped for the same reason unslop-text's scanner skips them: release tooling writes them.
+const docs = files.filter((f) => /\.(?:md|mdx|markdown|txt|rst|adoc)$/i.test(f) && !/(?:^|\/)(?:LICENSE|NOTICE|THIRD[-_]PARTY|CHANGELOG|CHANGES|HISTORY|RELEASE[-_]?NOTES)/i.test(f));
 const uiFiles = files.filter((f) => /\.(?:css|scss|sass|less|html?|jsx|tsx|vue|svelte|astro|razor|cshtml)$/i.test(f) && !TEST.test(f));
 
 const reactIn = [];
@@ -77,7 +78,11 @@ if (sourceCs.length) plan.push({ skill: "unslop-csharp", why: `${sourceCs.length
 if (uiFiles.length && !usesReact) plan.push({ skill: "unslop-ui", why: `${uiFiles.length} UI files (no React, so it runs on its own)` });
 if (docs.length) plan.push({ skill: "unslop-text", why: `${docs.length} docs` });
 if (isGit) {
-  const range = defaultBranch && branch && branch !== defaultBranch ? `${defaultBranch}..HEAD` : "the last 20 commits";
+  // On the default branch there is no branch range, so the last 20 commits (or the whole
+  // history when it is shorter) stand in. Both forms are valid `git log` arguments.
+  let range;
+  if (defaultBranch && branch && branch !== defaultBranch) range = `${defaultBranch}..HEAD`;
+  else range = Number(git("rev-list", "--count", "HEAD") ?? 0) > 20 ? "HEAD~20..HEAD" : "HEAD";
   plan.push({ skill: "unslop-git", why: `audit ${range}`, range });
 }
 
