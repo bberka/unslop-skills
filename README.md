@@ -25,6 +25,8 @@ unslop-all
 └── unslop-git           (last, so it can also describe the passes)
 ```
 
+`unslop-all` plans its passes from the files inside the chosen scope (a folder, a file, the branch's changes, or the whole repo), so a docs folder gets only `unslop-text` and a backend folder never reaches `unslop-react`. Every skill also checks its own scope and stops with "nothing in scope" when it has no files to work on.
+
 Skills reach each other by name, falling back to the sibling folder (`../unslop-ui/`), so install them together.
 
 ## Install

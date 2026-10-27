@@ -5,19 +5,19 @@ description: "Runs every applicable unslop skill over a project (tests, code, UI
 
 # Unslop all
 
-This skill orchestrates the others: it picks the skills that apply, runs them one at a time with a shared scope and baseline, and keeps each pass separate so any pass can be reviewed or reverted on its own. It writes no fixes itself.
+This skill orchestrates the others: it picks the skills that have files in the scope, runs them one at a time with a shared scope and baseline, and keeps each pass separate so any pass can be reviewed or reverted on its own. It writes no fixes itself.
 
 The skills it can run are `unslop-tests`, `unslop-typescript` (which continues into `unslop-react`, then `unslop-ui`), `unslop-csharp`, `unslop-ui`, `unslop-text`, and `unslop-git`. They live in sibling folders (`../unslop-<name>/`).
 
 ## Workflow
 
 1. **Preflight.** Run `git status`. Uncommitted changes would blend into the passes, so ask the user to commit or stash them before continuing. Outside a git repo, say that passes can't be reverted one at a time, and continue only if they agree.
-2. **Detect.** Run `node scripts/detect.mjs`. It prints what the project contains, the entry skills in run order, and the commit range for the git pass. Done when you have the plan.
-3. **Settle the two choices in one question.** Show the plan and ask the user, once:
-   - Scope: the whole repo, or only this branch's changes against the default branch. Every pass gets the same scope.
+2. **Settle the two choices in one question.** Ask the user, once:
+   - Scope: the folders or files they named, this branch's changes against the default branch, or the whole repo. When the request already names paths, that is the scope and only separation needs asking. Every pass gets the same scope.
    - Separation: a branch `unslop/<yyyy-mm-dd>` from `HEAD` with one commit per pass (the default, and the only mode where a pass can be reverted alone), or the current branch with every pass left uncommitted for the user to commit.
 
    Done when both answers are recorded. With the branch mode, create the branch now.
+3. **Detect on that scope.** Run `node scripts/detect.mjs <paths>` for folders or files, `node scripts/detect.mjs --changed` for the branch's changes, or `node scripts/detect.mjs` for the whole repo. It counts only files inside the scope and prints the entry skills in run order, the skipped skills with the reason (no C# files in a docs folder, no React in a backend folder, no history for a path scope), and the commit range for the git pass. Run only the planned skills. Show the user the plan and the skipped list. Done when every skill is either planned or skipped with its reason.
 4. **Baseline.** Run build, typecheck, lint, and tests once and record the results. Pass them to every skill so none of them re-measures.
 5. **Passes.** Run each entry skill in the printed order, one at a time, because passes edit overlapping files. When the harness supports subagents, give each pass its own subagent with a fresh context. Hand it the skill name, the scope, the baseline, and the instruction to return the skill's report. After each pass:
    - Checks green, branch mode: commit the pass. Write the message the way `unslop-git` prescribes. The subject names what the pass removed ("Remove assertion-free and duplicate tests"); "unslop pass" is not enough.
@@ -27,7 +27,7 @@ The skills it can run are `unslop-tests`, `unslop-typescript` (which continues i
 6. **Git pass last.** `unslop-git` audits the range `detect.mjs` printed. It reports and proposes rewordings. Rewriting needs the user's approval, and history on the default branch is never rewritten.
 7. **Report.**
 
-Done when every entry skill either ran or has a recorded reason for being skipped, each pass is one commit, a reverted commit, or a recorded set of files, and the final checks match the baseline.
+Done when every planned skill ran, every skipped skill is listed with the reason `detect.mjs` gave, each pass is one commit, a reverted commit, or a recorded set of files, and the final checks match the baseline.
 
 ## Report
 
@@ -40,4 +40,4 @@ Done when every entry skill either ran or has a recorded reason for being skippe
 Baseline to final: tests 412 to 371 (41 slop tests removed), lint warnings 88 to 9
 ```
 
-Then list each pass's proposals and open questions, grouped by skill, verbatim from that skill's report. Finish with the next decision the user has to make: merge the branch, review specific passes, or answer the proposals.
+List the skipped skills with their reasons under the table. Then list each pass's proposals and open questions, grouped by skill, verbatim from that skill's report. Finish with the next decision the user has to make: merge the branch, review specific passes, or answer the proposals.

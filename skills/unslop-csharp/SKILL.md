@@ -11,7 +11,7 @@ Each tell has a stable id (`cs-2`) in [TELLS.md](TELLS.md). Every fix is a **ref
 
 ## Workflow
 
-1. **Scope.** Use the paths the user named, or the scope the invoking skill passed. Otherwise ask whether to cover this branch's changes or the whole solution.
+1. **Scope.** Use the paths the user named, or the scope the invoking skill passed. Otherwise ask whether to cover this branch's changes or the whole solution. If the scope holds no C# source files outside test projects, report "nothing in scope" and stop.
 2. **Baseline.** Reuse the baseline the invoking skill passed. Otherwise, from a clean worktree, run `dotnet build` and `dotnet test` on the solution and record warnings, errors, and test counts. Note the `LangVersion` and target framework, whether nullable reference types are on, and whether each project is a library (public API is a contract) or an app. Done when all of that is written down.
 3. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 4. **Scan.**

@@ -11,7 +11,7 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
 
 ## Workflow
 
-1. **Scope.** Use the paths the user named, or the scope passed by the skill that invoked this one. Otherwise ask whether to cover this branch's changes (`git diff --name-only <default-branch>...HEAD`) or the whole repo.
+1. **Scope.** Use the paths the user named, or the scope passed by the skill that invoked this one. Otherwise ask whether to cover this branch's changes (`git diff --name-only <default-branch>...HEAD`) or the whole repo. If the scope holds no TS or JS source files outside tests, report "nothing in scope" and stop.
 2. **Baseline.** Run the project's typecheck (`tsc --noEmit` or its script), lint, and tests, and record the results. Start from a clean worktree so every change shows in one `git diff`. Done when all three results are written down, including failures that already existed. Those failures are reported, not fixed.
 3. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 4. **Scan.**
@@ -28,7 +28,7 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
 
    After each batch, run typecheck and tests. If a batch goes red, fix it or revert it and record why. When you delete dead code, delete the tests that only exercised it.
 6. **Propose instead of fixing** anything that changes exported API used outside the package, runtime behavior at a trust boundary (input, network, storage), dependencies, or architecture. List these with the reason.
-7. **React.** If any `package.json` depends on `react`, or the scope has `.tsx` or `.jsx` files, run the `unslop-react` skill (sibling folder `../unslop-react/`) on the same scope. That skill runs `unslop-ui` in turn.
+7. **React.** If the scope holds `.tsx` or `.jsx` files, or modules that import `react`, run the `unslop-react` skill (sibling folder `../unslop-react/`) on the same scope. That skill runs `unslop-ui` in turn.
 8. **Verify.** Typecheck, lint, and tests match the baseline. Rerun the scanners; every remaining hit is a keep you can justify.
 
 ## Report

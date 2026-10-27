@@ -11,7 +11,7 @@ Each tell has a stable id (`react-9`) in [TELLS.md](TELLS.md). Fixes are **refac
 
 ## Workflow
 
-1. **Scope and baseline.** Use the scope the user named or the invoking skill passed. If `unslop-typescript` invoked this skill, reuse its baseline. Otherwise ask for scope (this branch's changes or the whole repo), then record typecheck, lint, and test results from a clean worktree.
+1. **Scope and baseline.** Use the scope the user named or the invoking skill passed. If `unslop-typescript` invoked this skill, reuse its baseline. Otherwise ask for scope (this branch's changes or the whole repo), then record typecheck, lint, and test results from a clean worktree. If the scope holds no React code (no `.jsx` or `.tsx` files and no modules importing `react`), report "nothing in scope" and stop.
 2. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 3. **Learn the project's patterns.** The right fix depends on them. Find out:
    - The React version. React 19 passes `ref` as a prop, so `forwardRef` is not needed.
@@ -34,7 +34,7 @@ Each tell has a stable id (`react-9`) in [TELLS.md](TELLS.md). Fixes are **refac
 
    To merge duplicates, keep the API of the most-used member, migrate every call site, and delete the rest. After each batch, run typecheck and tests. State and effect changes can shift render timing, so click through the affected screens when a browser is available.
 7. **Propose instead of fixing** anything that changes a shared component's public props across packages, swaps the data layer, or moves the client/server boundary. List these with the reason.
-8. **UI layer.** Run the `unslop-ui` skill (sibling folder `../unslop-ui/`) on the same scope.
+8. **UI layer.** If the scope holds markup or styles, run the `unslop-ui` skill (sibling folder `../unslop-ui/`) on the same scope. A scope of hooks and logic alone has no UI layer.
 9. **Verify.** Checks match the baseline. Rerun the inventory and the scanner; the duplicate groups and hits that remain are justified keeps.
 
 ## Report
