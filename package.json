@@ -6,6 +6,6 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "sync": "node tools/sync.mjs",
-    "test": "node tools/sync.mjs --check && node --test tools/test.mjs"
+    "test": "node tools/sync.mjs --check && node --test \"tools/tests/*.test.mjs\""
   }
 }
