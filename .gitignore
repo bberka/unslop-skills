@@ -1,1 +1,35 @@
+# The scanners and detect.mjs honor this file through `git ls-files --exclude-standard`.
+# Keep fixture sources (.cs, .csproj, CHANGELOG.md, test files) out of these patterns.
+
+# Node
 node_modules/
+npm-debug.log*
+*.log
+.npm/
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# .NET build output, from building fixtures/csharp by hand
+bin/
+obj/
+*.binlog
+
+# Local environment
+.env
+.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Scratch space
+tmp/
