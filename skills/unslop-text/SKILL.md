@@ -18,7 +18,19 @@ The rewrite changes how the text says things and keeps what it says: every fact,
    - Apply each tell's fix. When a fix needs a fact you don't have (a benchmark for `text-6`, a source for `text-3`), list it as an open question. Keep the original claim out of the rewrite until it is answered.
    - Leave code blocks, inline code, front matter, link targets, and quoted material byte-for-byte.
    - In Markdown, changing a heading's case keeps its anchor, but rewording it breaks inbound links. Search the repo for `#anchor` links before you reword a heading.
-5. **Verify.** Run the scanner again. Done when every remaining hit is one of the keeps named in step 3, and every fact, number, and link from the original still appears in the rewrite.
+5. **Verify.** Run the scanner again. Done when every remaining hit is one of the keeps named in step 3, and every fact, number, and link from the original still appears in the rewrite. `node scripts/report.mjs` lists no file under "Changed with no ledger entry".
+
+## Ledger
+
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+
+```
+node scripts/ledger.mjs add --skill unslop-text --tell text-6 --action remove \
+  --file docs/intro.md --line 12 --what "\"10x faster\" claim" --why "No benchmark backs it" \
+  --evidence "no benchmark in the repo or docs; asked the user for a source"
+```
+
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
 
 ## Report
 

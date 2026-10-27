@@ -27,11 +27,23 @@ The project's design system and the user's brief override both lists. If the bri
    - Respect `prefers-reduced-motion`. One rule in the base stylesheet covers CSS animations; animation libraries need their own switch (`useReducedMotion` in Motion, for example).
    - For copy, run the `unslop-text` skill (sibling folder `../unslop-text/`) on every user-facing string. Apply `ui-20` alongside it.
 7. **Template tells.** Write a short direction grounded in step 1: 4 to 6 named hex colors, the type family and scale, the layout idea, and the one element meant to be memorable. Show it to the user. Restyle only after they agree, or right away if they already asked for a redesign.
-8. **Verify.** Re-take the screenshots and compare them with the originals. Build, lint, and tests stay green. Run `tokens.mjs` again; the distinct counts should drop toward the scale.
+8. **Verify.** Re-take the screenshots and compare them with the originals. Build, lint, and tests stay green. Run `tokens.mjs` again; the distinct counts should drop toward the scale. `node scripts/report.mjs` lists no file under "Changed with no ledger entry".
 
 ## Image or mockup only
 
 With no code, run steps 1 to 5 and deliver the findings as a critique. Give each template tell a concrete alternative tied to the subject.
+
+## Ledger
+
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+
+```
+node scripts/ledger.mjs add --skill unslop-ui --tell ui-13 --action rewrite \
+  --file src/components/Card.tsx --line 8 --what "bg-[#5b5bd6] to bg-primary" \
+  --why "Raw hex duplicates the primary token" --evidence "tokens.mjs: color count 23 to 22; screenshot unchanged"
+```
+
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
 
 ## Report
 

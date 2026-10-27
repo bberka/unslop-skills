@@ -27,16 +27,28 @@ The **mutation check** settles any doubt. Break the code under test the way the 
    - Rewrite sleeps with fake timers or by waiting on the condition.
    - Rewrite implementation-coupled tests through the public interface.
    - Skipped tests: unskip the ones that pass and delete the ones whose subject is gone. Ask the user about the rest, since a skip can mark a known bug.
-6. **Verify.** The suite is green. Every deletion is in the ledger. The skipped count went down, or each remaining skip has a linked issue. Report the coverage delta when coverage is configured; a drop from deleting padding (`tests-6`) is expected, so say so.
+6. **Verify.** The suite is green. Every deletion is in the ledger. The skipped count went down, or each remaining skip has a linked issue. Report the coverage delta when coverage is configured; a drop from deleting padding (`tests-6`) is expected, so say so. `node scripts/report.mjs` lists no file under "Changed with no ledger entry".
 
 ## Rules
 
 - Test code is the scope. When a fix seems to need a production-code change (a seam for a clock, an injectable client), list it as a proposal.
 - Repo conventions override tells. A style guide that mandates AAA comments keeps them.
 
+## Ledger
+
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+
+```
+node scripts/ledger.mjs add --skill unslop-tests --tell tests-4 --action remove \
+  --file tests/UserServiceTests.cs --what "GetsUser" --why "Asserts the value the mock was told to return" \
+  --evidence "mutation: Get returns null, test stayed green"
+```
+
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
+
 ## Report
 
-A ledger, one row per changed test:
+A table, one row per changed test, matching the ledger entries:
 
 ```
 | Test                                  | Verdict | Tell     | Evidence                                |

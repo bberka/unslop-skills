@@ -53,6 +53,17 @@ Every code skill follows the same contract:
 
 Documented repo standards (lint config, `.editorconfig`, `CONTRIBUTING.md`) override any tell, with one exception: `unslop-git` removes AI tool attribution (`Co-authored-by` trailers and "Generated with" footers) whatever the history does, and never adds it.
 
+### Change ledger and HTML report
+
+Every skill records what it changed, kept, or proposed in `.unslop/ledger.jsonl`, one entry per change, with the tell id, the reason, and the evidence that made the change safe (`rg getUser: 0 callers`, `knip: unused file`, `mutation: test stayed green`). `ledger.mjs` rejects a removal without evidence. At the end of a run the skill renders `.unslop/report.html`, a single file that needs nothing else to open, with:
+
+- every change grouped by file, with its tell, reason, evidence, and git diff
+- deleted files, kept findings, and proposals waiting for a decision
+- the files that changed with no ledger entry, so an unexplained change stands out
+- filters by skill, action, tell, and text
+
+`ledger.mjs start` records the commit a run begins from, and the report diffs against it. Starting a new run moves the previous ledger and report into `.unslop/history/`. The folder is added to `.git/info/exclude`, so it stays out of commits without touching the project's `.gitignore`.
+
 ### Silencing a hit
 
 The scanners skip a line containing `unslop-ignore` and a file containing `unslop-ignore-file`. The text scanner also skips changelogs (`CHANGELOG`, `HISTORY`, `RELEASE_NOTES`) on a directory walk, since release tooling writes those; naming one explicitly scans it.
@@ -73,7 +84,7 @@ npm test        # fixture tests for every script, plus a check that scanner copi
 npm run sync    # copy shared/scan.mjs into every skill
 ```
 
-Each skill installs on its own, so the scanner engine is vendored: `shared/scan.mjs` is the source, and `tools/sync.mjs` copies it into every skill that has a `scripts/rules.mjs`. Edit the shared copy only.
+Each skill installs on its own, so shared scripts are vendored. `shared/scan.mjs` is copied into every skill that has a `scripts/rules.mjs`, and `shared/ledger.mjs` and `shared/report.mjs` into every skill, by `tools/sync.mjs`. Edit the shared copies only.
 
 To add a tell:
 

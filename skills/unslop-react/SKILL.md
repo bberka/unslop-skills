@@ -35,7 +35,19 @@ Each tell has a stable id (`react-9`) in [TELLS.md](TELLS.md). Fixes are **refac
    To merge duplicates, keep the API of the most-used member, migrate every call site, and delete the rest. After each batch, run typecheck and tests. State and effect changes can shift render timing, so click through the affected screens when a browser is available.
 7. **Propose instead of fixing** anything that changes a shared component's public props across packages, swaps the data layer, or moves the client/server boundary. List these with the reason.
 8. **UI layer.** If the scope holds markup or styles, run the `unslop-ui` skill (sibling folder `../unslop-ui/`) on the same scope. A scope of hooks and logic alone has no UI layer.
-9. **Verify.** Checks match the baseline. Rerun the inventory and the scanner; the duplicate groups and hits that remain are justified keeps.
+9. **Verify.** Checks match the baseline. Rerun the inventory and the scanner; the duplicate groups and hits that remain are justified keeps. `node scripts/report.mjs` lists no file under "Changed with no ledger entry".
+
+## Ledger
+
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+
+```
+node scripts/ledger.mjs add --skill unslop-react --tell react-9 --action merge \
+  --file src/components/SubmitButton.tsx --what "SubmitButton into Button variant=\"primary\"" \
+  --why "Differs from PrimaryButton only by type=submit" --evidence "4 call sites migrated; tsc and tests green"
+```
+
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
 
 ## Report
 

@@ -31,5 +31,6 @@ obj/
 Thumbs.db
 desktop.ini
 
-# Scratch space
+# Scratch space and unslop run output
 tmp/
+.unslop/

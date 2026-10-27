@@ -29,7 +29,19 @@ Each tell has a stable id (`cs-2`) in [TELLS.md](TELLS.md). Every fix is a **ref
 
    Removing an interface or a layer means updating the DI registrations in `Program.cs` or the `ServiceCollection` extensions. After each batch, run `dotnet build` and `dotnet test`. If a batch goes red, fix it or revert it and record why.
 6. **Propose instead of fixing** anything that changes a public API in a library, alters the exception or logging behavior that operators depend on, enables nullable reference types project-wide, or reshapes the architecture. List these with the reason.
-7. **Verify.** The build has no new warnings, tests match the baseline, and the scanners show only justified keeps.
+7. **Verify.** The build has no new warnings, tests match the baseline, and the scanners show only justified keeps. `node scripts/report.mjs` lists no file under "Changed with no ledger entry".
+
+## Ledger
+
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+
+```
+node scripts/ledger.mjs add --skill unslop-csharp --tell cs-1 --action delete-file \
+  --file src/Orders/IOrderService.cs --why "One implementation and no test double" \
+  --evidence "rg IOrderService: 1 implementation, 0 mocks; DI registration updated; dotnet build and test green"
+```
+
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
 
 ## Report
 

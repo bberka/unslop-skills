@@ -43,3 +43,7 @@ The repo's convention overrides every tell except `git-7`. If the history uses C
 4. **Apply** after the user approves: `node scripts/reword.mjs <map.json>`. It needs git 2.38 or later and a worktree with no uncommitted changes (untracked files are fine), refuses merge commits, refuses commits already on a remote unless given `--allow-pushed`, and prints a backup ref to undo with. Pass `--allow-pushed` only when the user has explicitly accepted a force-push. The force-push itself is theirs to run or to ask for.
 
 Done when every commit in range is either reworded or listed with the reason it stays as is.
+
+## Ledger
+
+When auditing history, start the run with `node scripts/ledger.mjs start` (unless another skill invoked this one) and record each flagged commit with `node scripts/ledger.mjs add --skill unslop-git --tell git-1 --action propose --commit <sha> --what "<old subject>" --why "<the problem>"`, and after `reword.mjs` runs, record each reworded commit with `--action rewrite --evidence "reword.mjs: <old sha> to <new sha>"`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. Writing a single new message needs no ledger entry.

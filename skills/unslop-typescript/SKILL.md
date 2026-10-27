@@ -29,7 +29,19 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
    After each batch, run typecheck and tests. If a batch goes red, fix it or revert it and record why. When you delete dead code, delete the tests that only exercised it.
 6. **Propose instead of fixing** anything that changes exported API used outside the package, runtime behavior at a trust boundary (input, network, storage), dependencies, or architecture. List these with the reason.
 7. **React.** If the scope holds `.tsx` or `.jsx` files, or modules that import `react`, run the `unslop-react` skill (sibling folder `../unslop-react/`) on the same scope. That skill runs `unslop-ui` in turn.
-8. **Verify.** Typecheck, lint, and tests match the baseline. Rerun the scanners; every remaining hit is a keep you can justify.
+8. **Verify.** Typecheck, lint, and tests match the baseline. Rerun the scanners; every remaining hit is a keep you can justify. `node scripts/report.mjs` lists no file under "Changed with no ledger entry".
+
+## Ledger
+
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+
+```
+node scripts/ledger.mjs add --skill unslop-typescript --tell ts-12 --action remove \
+  --file src/api/users.ts --line 40 --what "getUser wrapper around api.getUser" \
+  --why "Forwards to api.getUser unchanged" --evidence "rg getUser: 3 callers migrated; tsc and tests green"
+```
+
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry.
 
 ## Report
 
