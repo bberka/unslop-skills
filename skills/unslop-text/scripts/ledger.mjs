@@ -8,7 +8,10 @@
 //   node ledger.mjs add --skill <name> --tell <id> --action <action> --why "<reason>"
 //                       [--evidence "<check>"] [--file <path>] [--line <n>] [--what "<thing>"]
 //                       [--count <n>] [--commit <sha>]
-//   node ledger.mjs import <file|->   entries as JSON lines or a JSON array, same fields
+//   node ledger.mjs import <file|-> [--skill <name>]
+//                       a batch as JSON lines or a JSON array, same fields as add. --skill fills
+//                       in the skill for every entry that names none. One call per batch keeps a
+//                       run's ledger to a handful of tool calls; an invalid entry rejects the batch.
 //   node ledger.mjs path              print the ledger path
 //
 // Actions: remove (code inside a file), delete-file, rewrite, merge, move, keep, propose.
@@ -121,15 +124,20 @@ if (command === "start") {
 } else if (command === "add") {
   write([validate(parseFlags(rest), "add")]);
 } else if (command === "import") {
-  if (!rest[0]) fail("import needs a file path, or - for stdin");
-  const text = readFileSync(rest[0] === "-" ? 0 : rest[0], "utf8").trim();
+  const source = rest.find((a, i) => !a.startsWith("--") && rest[i - 1] !== "--skill");
+  if (!source) fail("import needs a file path, or - for stdin");
+  const flags = parseFlags(rest.filter((a) => a !== source));
+  for (const key of Object.keys(flags)) if (key !== "skill") fail(`import takes only --skill, not --${key}`);
+  const text = readFileSync(source === "-" ? 0 : source, "utf8").trim();
+  if (!text) fail("import: the batch is empty");
   let items;
   try {
     items = text.startsWith("[") ? JSON.parse(text) : text.split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l));
   } catch (e) {
     fail(`import: not valid JSON or JSON lines (${e.message})`);
   }
-  write(items.map((item, i) => validate(item, `import entry ${i + 1}`)));
+  if (!Array.isArray(items)) fail("import: a JSON batch must be an array or JSON lines");
+  write(items.map((item, i) => validate(flags.skill && item.skill === undefined ? { skill: flags.skill, ...item } : item, `import entry ${i + 1}`)));
 } else if (command === "path") {
   console.log(ledgerPath);
 } else {

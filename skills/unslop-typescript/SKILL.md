@@ -33,15 +33,17 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
 
 ## Ledger
 
-Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Then record every change, keep, and proposal as you make it, with `node scripts/ledger.mjs add` (`--help` lists the fields):
+Unless another skill invoked this one, run `node scripts/ledger.mjs start` before the first change. It records the starting commit, which the report diffs against, and archives any earlier run. Record every change, keep, and proposal in batches: after each fix batch (and once for the keeps and proposals), write all its entries in one call, one JSON line per entry (`--help` lists the fields):
 
 ```
-node scripts/ledger.mjs add --skill unslop-typescript --tell ts-12 --action remove \
-  --file src/api/users.ts --line 40 --what "getUser wrapper around api.getUser" \
-  --why "Forwards to api.getUser unchanged" --evidence "rg getUser: 3 callers migrated; tsc and tests green"
+node scripts/ledger.mjs import - --skill unslop-typescript <<'EOF'
+{"tell":"ts-12","action":"remove","file":"src/api/users.ts","line":40,"what":"getUser wrapper around api.getUser","why":"Forwards to api.getUser unchanged","evidence":"rg getUser: 3 callers migrated; tsc and tests green"}
+{"tell":"ts-18","action":"remove","file":"src/api/users.ts","count":6,"why":"Comments restate the code","evidence":"comments only"}
+{"tell":"ts-13","action":"propose","file":"src/api/gateway.ts","line":1,"what":"IPaymentGateway, one implementation","why":"Exported from the package API, so removing it needs a decision"}
+EOF
 ```
 
-Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `--evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `--count`. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry. When the user or the invoking skill asks for a report only, record each finding as `propose` with its fix in `--what`, change no file, skip the fix and verify steps, and pass the same instruction to any skill this one invokes.
+Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `propose`. The first five need `evidence`: the command or check that showed the change was safe. One mechanical fix repeated in one file shares an entry with `count`. An invalid entry rejects the whole batch with its number, so fix it and resend the batch. Unless another skill invoked this one, finish with `node scripts/report.mjs` and give the user the path to `.unslop/report.html`. It shows every change with its reason, evidence, and diff, and lists any changed file that has no entry. When the user or the invoking skill asks for a report only, record each finding as `propose` with its fix in `what`, change no file, skip the fix and verify steps, and pass the same instruction to any skill this one invokes.
 
 ## Report
 

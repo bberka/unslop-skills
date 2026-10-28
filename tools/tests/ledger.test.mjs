@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { script, repo } from "./helpers.mjs";
+import { root, script, repo } from "./helpers.mjs";
 
 const ledger = (cwd, ...args) => spawnSync("node", [script("unslop-typescript", "ledger.mjs"), ...args], { cwd, encoding: "utf8" });
 const report = (cwd, ...args) => spawnSync("node", [script("unslop-typescript", "report.mjs"), ...args], { cwd, encoding: "utf8" });
@@ -96,4 +96,43 @@ test("report.mjs works outside git and fails clearly without a ledger", () => {
   assert.ok(existsSync(join(dir, ".unslop", "report.html")));
   assert.ok(existsSync(join(dir, ".unslop", ".gitignore")), "outside git the folder still guards itself");
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("ledger.mjs import records a batch in one call, fills in --skill, and rejects the whole batch on one bad entry", () => {
+  const { dir, commit } = repo();
+  commit("README.md", "Add readme");
+  ledger(dir, "start");
+  const batch = (input, ...args) => spawnSync("node", [script("unslop-typescript", "ledger.mjs"), "import", "-", ...args], { cwd: dir, encoding: "utf8", input });
+  const good = [
+    { tell: "ts-12", action: "remove", file: "src/a.ts", why: "Forwards unchanged", evidence: "rg a: 0 callers" },
+    { tell: "ts-18", action: "remove", file: "src/a.ts", count: 6, why: "Comments restate the code", evidence: "comments only" },
+    { skill: "unslop-react", tell: "react-17", action: "keep", file: "src/List.tsx", why: "Static list" },
+  ].map((e) => JSON.stringify(e)).join("\n");
+  const run = batch(good, "--skill", "unslop-typescript");
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /recorded 3 entries/);
+  assert.deepEqual(records(dir).filter((r) => !r.type).map((r) => r.skill), ["unslop-typescript", "unslop-typescript", "unslop-react"]);
+
+  const bad = batch(`${JSON.stringify({ tell: "ts-1", action: "keep", why: "x" })}\n${JSON.stringify({ tell: "ts-12", action: "remove", why: "x" })}`, "--skill", "unslop-typescript");
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /import entry 2: .*evidence/);
+  assert.equal(records(dir).length, 4, "nothing from the rejected batch was written");
+  assert.equal(batch("", "--skill", "unslop-typescript").status, 2, "empty batch");
+  assert.equal(batch(good, "--tell", "ts-1").status, 2, "import takes only --skill");
+});
+
+test("every SKILL.md ledger example runs as written", () => {
+  const skills = readdirSync(join(root, "skills")).filter((s) => existsSync(join(root, "skills", s, "SKILL.md")));
+  let ran = 0;
+  for (const skill of skills) {
+    const text = readFileSync(join(root, "skills", skill, "SKILL.md"), "utf8");
+    for (const m of text.matchAll(/```\n(node scripts\/ledger\.mjs import - --skill \S+) <<'EOF'\n([\s\S]*?)\nEOF\n```/g)) {
+      const { dir } = repo();
+      const args = m[1].split(" ").slice(2);
+      const run = spawnSync("node", [script(skill, "ledger.mjs"), ...args], { cwd: dir, encoding: "utf8", input: m[2] });
+      assert.equal(run.status, 0, `${skill}: ${run.stderr}`);
+      ran++;
+    }
+  }
+  assert.ok(ran >= 6, `found ${ran} examples`);
 });
