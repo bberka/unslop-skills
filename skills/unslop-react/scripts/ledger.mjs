@@ -17,10 +17,10 @@
 // --count lets one entry stand for the same mechanical fix repeated in one file.
 // report.mjs diffs against the commit recorded by `start`, so run it before the first change.
 //
-// The ledger lives at <repo root>/.unslop/ledger.jsonl (UNSLOP_LEDGER overrides). In a git
-// repo, .unslop/ is added to .git/info/exclude, so it stays out of commits without touching
-// the project's .gitignore.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from "node:fs";
+// The ledger lives at <repo root>/.unslop/ledger.jsonl (UNSLOP_LEDGER overrides). The folder
+// gets its own .gitignore, and in a git repo .unslop/ is also added to .git/info/exclude, so it
+// stays out of commits and lint runs without touching the project's .gitignore.
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
@@ -64,9 +64,19 @@ function validate(raw, where) {
   return { time: new Date().toISOString(), ...entry };
 }
 
+// Two guards keep run output out of the project. A .gitignore inside .unslop/ is the one that
+// linters and formatters read (XO, ESLint, Prettier, Biome honor .gitignore files, not
+// .git/info/exclude), so they skip a report that can run to megabytes. The info/exclude line
+// keeps git quiet even if that file is deleted.
 function ensureExcluded() {
+  if (!ledgerPath.startsWith(join(root, ".unslop"))) return;
+  const own = join(root, ".unslop", ".gitignore");
+  if (!existsSync(own)) {
+    mkdirSync(dirname(own), { recursive: true });
+    writeFileSync(own, "# unslop run output: the ledger and report are never committed or linted\n*\n");
+  }
   const exclude = git("rev-parse", "--git-path", "info/exclude");
-  if (!exclude || !ledgerPath.startsWith(join(root, ".unslop"))) return;
+  if (!exclude) return;
   const path = isAbsolute(exclude) ? exclude : join(root, exclude);
   const current = existsSync(path) ? readFileSync(path, "utf8") : "";
   if (current.split("\n").some((l) => l.trim() === ".unslop/")) return;

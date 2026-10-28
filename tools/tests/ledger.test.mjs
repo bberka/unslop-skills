@@ -36,6 +36,7 @@ test("ledger.mjs records entries, keeps .unslop/ out of git, and rejects entries
   assert.equal(entry.line, 4);
   assert.equal(records(dir).length, 2, "rejected entries were not written");
   assert.match(readFileSync(join(dir, ".git", "info", "exclude"), "utf8"), /^\.unslop\/$/m);
+  assert.match(readFileSync(join(dir, ".unslop", ".gitignore"), "utf8"), /^\*$/m, "linters read .gitignore files, not info/exclude");
   assert.equal(git("status", "--porcelain"), "");
 });
 
@@ -93,5 +94,6 @@ test("report.mjs works outside git and fails clearly without a ledger", () => {
   const run = report(dir);
   assert.equal(run.status, 0, run.stderr);
   assert.ok(existsSync(join(dir, ".unslop", "report.html")));
+  assert.ok(existsSync(join(dir, ".unslop", ".gitignore")), "outside git the folder still guards itself");
   rmSync(dir, { recursive: true, force: true });
 });

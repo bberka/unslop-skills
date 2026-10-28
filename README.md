@@ -69,7 +69,7 @@ Every skill records what it changed, kept, or proposed in `.unslop/ledger.jsonl`
 - the files that changed with no ledger entry, so an unexplained change stands out
 - filters by skill, action, tell, and text
 
-`ledger.mjs start` records the commit a run begins from, and the report diffs against it. Starting a new run moves the previous ledger and report into `.unslop/history/`. The folder is added to `.git/info/exclude`, so it stays out of commits without touching the project's `.gitignore`.
+`ledger.mjs start` records the commit a run begins from, and the report diffs against it. Starting a new run moves the previous ledger and report into `.unslop/history/`. The folder gets its own `.gitignore` and a line in `.git/info/exclude`, so it stays out of commits and out of lint and format runs (XO, ESLint, Prettier) without touching the project's `.gitignore`.
 
 ### Silencing a hit
 
