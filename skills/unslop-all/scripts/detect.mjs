@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Decides which unslop skills apply to a scope, and the order to run them in.
+// Decides which unslop skills apply to a scope, and the order to run them in. The source of
+// truth is shared/detect.mjs; tools/sync.mjs copies it into unslop-all and unslop-diff.
 // Only files inside the scope count: a repo with C# elsewhere does not send unslop-csharp
 // into a docs folder. Skills with nothing in scope are listed as skipped, with the reason.
 //
 // Usage: node detect.mjs [--json] [--exclude <path>]... [--passes <list>] [paths...]
 //          files or folders (default: the whole repo)
 //        node detect.mjs [--json] [--exclude <path>]... [--passes <list>] --changed[=<base>] [paths...]
-//          files changed on this branch against <base> (default: the default branch),
-//          plus uncommitted and untracked files, narrowed to [paths] when given
+//          files changed since the merge base with <base> (default: the default branch):
+//          committed, staged, unstaged, and untracked. --changed=HEAD is uncommitted work alone.
+//          Narrowed to [paths] when given.
 //        node detect.mjs --questions [--exclude <path>]... [--changed | paths...]
 //          survey the scope and print JSON: what it holds, the edit rules in AGENTS.md,
 //          CLAUDE.md, and CONTRIBUTING.md, ready-made questions in the shape AskUserQuestion
@@ -77,6 +79,15 @@ const gitAt = (...a) => {
 };
 const lines = (out) => (out ?? "").split("\n").filter(Boolean);
 
+// Every file that differs from the merge base with <base>: the working tree against that commit
+// covers committed, staged, and unstaged changes alike, and untracked files are added on top.
+// `git ls-files -m` alone would miss a staged file with no later edit.
+function changedSince(ref) {
+  const mergeBase = gitAt("merge-base", ref, "HEAD");
+  if (!mergeBase) return null;
+  return [...new Set([...lines(gitAt("diff", "--name-only", "--diff-filter=d", mergeBase)), ...lines(gitAt("ls-files", "-o", "--exclude-standard"))])];
+}
+
 let branch = null, defaultBranch = null;
 if (isGit) {
   branch = gitAt("rev-parse", "--abbrev-ref", "HEAD");
@@ -111,9 +122,8 @@ if (mode === "changed") {
   if (!isGit) fail("--changed needs a git repository");
   base = changedArg.includes("=") ? changedArg.split("=")[1] : defaultBranch;
   if (!base) fail("no default branch found; pass --changed=<base>");
-  const committed = gitAt("diff", "--name-only", "--diff-filter=d", `${base}...HEAD`);
-  if (committed === null) fail(`cannot diff against ${base}`);
-  files = [...new Set([...lines(committed), ...lines(gitAt("ls-files", "-mo", "--exclude-standard"))])];
+  files = changedSince(base);
+  if (files === null) fail(`no merge base between ${base} and HEAD`);
 } else if (isGit) {
   files = lines(gitAt("ls-files", "-co", "--exclude-standard", "--", ...(scopePaths.length ? scopePaths : ["."])));
   // A file the user named counts even when git ignores it.
@@ -309,8 +319,7 @@ function survey() {
 
   let branchChanges = 0;
   if (mode === "repo" && isGit && defaultBranch && branch && branch !== defaultBranch) {
-    const changed = new Set([...lines(gitAt("diff", "--name-only", "--diff-filter=d", `${defaultBranch}...HEAD`)), ...lines(gitAt("ls-files", "-mo", "--exclude-standard"))]);
-    branchChanges = [...changed].filter((f) => !SKIP.test(f) && (CODE.test(f) || /\.(?:md|mdx|markdown|txt|rst|adoc)$/i.test(f))).length;
+    branchChanges = (changedSince(defaultBranch) ?? []).filter((f) => !SKIP.test(f) && (CODE.test(f) || /\.(?:md|mdx|markdown|txt|rst|adoc)$/i.test(f))).length;
   }
   const dirty = isGit && lines(gitAt("status", "--porcelain")).length > 0;
 

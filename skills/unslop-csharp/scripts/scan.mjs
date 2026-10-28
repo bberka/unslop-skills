@@ -3,13 +3,18 @@
 // Tell scanner. The source of truth is shared/scan.mjs; tools/sync.mjs copies it
 // into each skill's scripts/ folder. Edit the shared copy, then run `npm run sync`.
 //
-// Usage: node scan.mjs [--json] [--check] [--exclude <path>]... [paths...]
+// Usage: node scan.mjs [--json] [--check] [--exclude <path>]... [--diff[=<base>]] [paths...]
 //   Scans files with the rules in ./rules.mjs. Directories are walked (git-aware,
 //   skipping dependency, build, and agent-tooling folders) and filtered by each rule's
 //   `files` pattern; files named explicitly get every rule.
 //   --json     machine-readable output
 //   --check    exit 1 when anything is found (for hooks and CI)
 //   --exclude  skip a file or folder (repeatable), for areas the project puts off limits
+//   --diff     scan only what changed since the merge base with <base> (default: the default
+//              branch), counting committed, staged, unstaged, and untracked work. Findings are
+//              kept only on added or changed lines; a new file counts in full. A tell reported
+//              for a whole file (line 1) shows only when that line changed. --diff=HEAD covers
+//              uncommitted work alone.
 //
 // A line containing `unslop-ignore` is skipped; a file containing
 // `unslop-ignore-file` is skipped entirely.
@@ -25,7 +30,7 @@
 //     prose?: true,                      // markdown: blank out code fences and inline code first
 //     script?: true }                    // .svelte/.vue/.astro/.html: blank out all but <script> blocks
 
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync, realpathSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, relative, resolve } from "node:path";
 import rules from "./rules.mjs";
@@ -44,8 +49,11 @@ const json = args.includes("--json");
 const check = args.includes("--check");
 const excludes = [];
 const targets = [];
+let diffBase = null;
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--exclude") {
+  if (args[i] === "--diff" || args[i].startsWith("--diff=")) {
+    diffBase = args[i].includes("=") ? args[i].slice("--diff=".length) : "";
+  } else if (args[i] === "--exclude") {
     if (!args[i + 1]) { console.error("scan: --exclude needs a path"); process.exit(2); }
     excludes.push(resolve(args[++i]));
   } else if (!args[i].startsWith("--")) {
@@ -54,6 +62,49 @@ for (let i = 0; i < args.length; i++) {
 }
 if (targets.length === 0) targets.push(".");
 const excluded = (abs) => excludes.some((e) => abs === e || abs.startsWith(e.endsWith("/") ? e : `${e}/`));
+const real = (p) => { try { return realpathSync(p); } catch { return resolve(p); } };
+
+// --diff: changed line ranges per file, keyed by real path; "all" for an untracked file.
+function diffRanges(ref) {
+  const git = (...a) => {
+    try {
+      return execFileSync("git", ["-c", "core.quotePath=false", ...a], { stdio: ["ignore", "pipe", "ignore"], encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+    } catch {
+      return null;
+    }
+  };
+  const root = git("rev-parse", "--show-toplevel")?.trim();
+  if (!root) { console.error("scan: --diff needs a git repository"); process.exit(2); }
+  let base = ref;
+  if (!base) {
+    base = git("symbolic-ref", "--short", "refs/remotes/origin/HEAD")?.trim().replace(/^origin\//, "")
+      ?? ["main", "master", "trunk", "develop"].find((b) => git("rev-parse", "--verify", "-q", b) !== null);
+    if (!base) { console.error("scan: no default branch found; pass --diff=<base>"); process.exit(2); }
+  }
+  const mergeBase = git("merge-base", base, "HEAD")?.trim();
+  if (!mergeBase) { console.error(`scan: no merge base between ${base} and HEAD`); process.exit(2); }
+  const ranges = new Map();
+  let current = null;
+  for (const line of (git("diff", "-U0", "--no-color", "--no-ext-diff", "--find-renames", mergeBase) ?? "").split("\n")) {
+    if (line.startsWith("+++ ")) {
+      const path = line.slice(4);
+      current = path === "/dev/null" ? null : real(join(root, path.replace(/^b\//, "")));
+      if (current && !ranges.has(current)) ranges.set(current, []);
+      continue;
+    }
+    const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
+    if (hunk && current) {
+      const start = Number(hunk[1]);
+      const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
+      if (count > 0) ranges.get(current).push([start, start + count - 1]);
+    }
+  }
+  for (const f of (git("ls-files", "-z", "--others", "--exclude-standard") ?? "").split("\0").filter(Boolean)) {
+    ranges.set(real(join(root, f)), "all");
+  }
+  return { base, ranges };
+}
+const diff = diffBase === null ? null : diffRanges(diffBase);
 
 function gitFiles(dir) {
   try {
@@ -140,7 +191,9 @@ function scanFile(path, explicit) {
   let script = null;
   let scriptLines = null;
 
+  const changedLines = diff ? diff.ranges.get(real(path)) : null;
   const push = (rule, line, match) => {
+    if (changedLines && changedLines !== "all" && !changedLines.some(([a, b]) => line >= a && line <= b)) return;
     const source = rawLines[line - 1] ?? "";
     if (source.includes("unslop-ignore")) return;
     if (rule.filter && !rule.filter(match, source, posixRel)) return;
@@ -176,7 +229,16 @@ function scanFile(path, explicit) {
   }
 }
 
-for (const target of targets) {
+const underTarget = (abs) => targets.some((t) => { const r = real(t); return abs === r || abs.startsWith(`${r}/`); });
+if (diff) {
+  for (const [abs, lines] of diff.ranges) {
+    if (lines !== "all" && lines.length === 0) continue;
+    if (!existsSync(abs) || excluded(abs) || !underTarget(abs)) continue;
+    if (abs.split(/[\\/]/).some((part) => SKIP_DIRS.has(part))) continue;
+    scanFile(abs, false);
+  }
+}
+for (const target of diff ? [] : targets) {
   const abs = resolve(target);
   if (!existsSync(abs)) {
     console.error(`scan: no such path: ${target}`);
@@ -207,7 +269,7 @@ if (json) {
     .sort((a, b) => b[1] - a[1])
     .map(([id, n]) => `${id} x${n}`)
     .join(", ");
-  console.log(`\n${findings.length} hits in ${files} files (${summary})`);
+  console.log(`\n${findings.length} hits in ${files} files (${summary})${diff ? `, on lines changed since ${diff.base}` : ""}`);
   console.log("Hits are candidates. Judge each against the tell's definition before changing anything.");
 }
 

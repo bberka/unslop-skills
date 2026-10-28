@@ -5,10 +5,12 @@
 // it into every skill's scripts/ folder.
 //
 // Usage: node report.mjs [--base <ref>] [--out <file>]
-//   --base  diff against this ref. Default: the commit `ledger.mjs start` recorded, or HEAD when
-//           the run has no start record. Uncommitted and untracked changes are included.
+//   --base  diff against this ref. Default: the working-tree snapshot `ledger.mjs start` recorded
+//           (uncommitted work at the start is not the run's change), else its HEAD, else HEAD.
+//           The other side is the working tree now, untracked files included.
 //   --out   output path. Default: report.html next to the ledger.
-import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,6 +32,30 @@ const gitIn = (cwd) => (...a) => {
 };
 const root = gitIn(process.cwd())("rev-parse", "--show-toplevel") ?? process.cwd();
 const git = gitIn(root);
+
+// The working tree as a git tree: tracked changes and untracked files, ignored files left out.
+// It goes through a temporary copy of the index, so the real index and the worktree stay as they
+// are. Returns null outside git or before the first commit.
+function worktreeTree() {
+  const head = git("rev-parse", "--verify", "-q", "HEAD");
+  if (!head) return null;
+  const dir = mkdtempSync(join(tmpdir(), "unslop-index-"));
+  const index = join(dir, "index");
+  try {
+    const own = git("rev-parse", "--path-format=absolute", "--git-path", "index");
+    if (own && existsSync(own)) copyFileSync(own, index);
+    const env = { ...process.env, GIT_INDEX_FILE: index };
+    const run = (...a) => execFileSync("git", a, { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 1 << 28 }).trim();
+    if (!existsSync(index)) run("read-tree", head);
+    run("add", "-A");
+    return run("write-tree");
+  } catch {
+    return null;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 const isGit = git("rev-parse", "--is-inside-work-tree") === "true";
 const lines = (out) => (out ?? "").split("\n").filter(Boolean);
 
@@ -59,18 +85,21 @@ for (const dir of existsSync(skillsDir) ? readdirSync(skillsDir) : []) {
 let base = flag("--base");
 let baseLabel = base;
 if (isGit && !base) {
-  base = start?.head ?? "HEAD";
+  base = start?.snapshot ?? start?.head ?? "HEAD";
   baseLabel = start?.head ? `run start, ${String(start.time ?? "").replace("T", " ").slice(0, 16)} UTC${start.branch ? ` on ${start.branch}` : ""}` : "HEAD, no start record";
 }
 const changed = new Map();
+const now = isGit ? worktreeTree() : null;
 if (isGit) {
   if (git("rev-parse", "--verify", "-q", base) === null) fail(`unknown base ${base}`);
-  for (const line of lines(git("diff", "--name-status", "--find-renames", base))) {
+  for (const line of lines(git("diff", "--name-status", "--find-renames", base, ...(now ? [now] : [])))) {
     const parts = line.split("\t");
     changed.set(parts[parts.length - 1], { status: parts[0][0], from: parts.length > 2 ? parts[1] : null });
   }
-  for (const f of lines(git("ls-files", "-o", "--exclude-standard"))) {
-    if (!f.startsWith(".unslop/") && !changed.has(f)) changed.set(f, { status: "A", from: null });
+  if (!now) {
+    for (const f of lines(git("ls-files", "-o", "--exclude-standard"))) {
+      if (!f.startsWith(".unslop/") && !changed.has(f)) changed.set(f, { status: "A", from: null });
+    }
   }
 }
 
@@ -78,10 +107,10 @@ function diffFor(path) {
   const info = changed.get(path);
   if (!info) return null;
   let raw;
-  if (info.status === "A" && git("ls-files", "--error-unmatch", path) === null) {
+  if (!now && info.status === "A" && git("ls-files", "--error-unmatch", path) === null) {
     try { raw = readFileSync(join(root, path), "utf8").split("\n").map((l) => `+${l}`).join("\n"); } catch { raw = ""; }
   } else {
-    raw = git("diff", "--no-color", "--find-renames", base, "--", ...(info.from ? [info.from, path] : [path])) ?? "";
+    raw = git("diff", "--no-color", "--find-renames", base, ...(now ? [now] : []), "--", ...(info.from ? [info.from, path] : [path])) ?? "";
   }
   const body = raw.split("\n").filter((l) => !/^(?:diff --git|index |--- |\+\+\+ |similarity |rename |new file|deleted file)/.test(l));
   const adds = body.filter((l) => l.startsWith("+")).length;

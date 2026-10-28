@@ -11,7 +11,7 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
 
 ## Workflow
 
-1. **Scope.** Use the paths the user named, or the scope passed by the skill that invoked this one. Otherwise ask whether to cover this branch's changes (`git diff --name-only <default-branch>...HEAD`) or the whole repo. If the scope holds no TS or JS source files outside tests, report "nothing in scope" and stop.
+1. **Scope.** Use the paths the user named, or the scope passed by the skill that invoked this one. Otherwise ask whether to cover this branch's changes (`git diff --name-only <default-branch>...HEAD`) or the whole repo. If the scope holds no TS or JS source files outside tests, report "nothing in scope" and stop. When the scope is a diff (a PR, a branch, or uncommitted work), run the scanners with `--diff=<base>` and fix only the lines the diff changed, as `unslop-diff` describes.
 2. **Baseline.** Run the project's typecheck (`tsc --noEmit` or its script), lint, and tests, and record the results. Start from a clean worktree so every change shows in one `git diff`. Done when all three results are written down, including failures that already existed. Those failures are reported, not fixed.
 3. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 4. **Scan.**

@@ -4,7 +4,8 @@
 // shared/ledger.mjs; tools/sync.mjs copies it into every skill's scripts/ folder.
 //
 // Usage:
-//   node ledger.mjs start             begin a run: archive the previous ledger, record HEAD
+//   node ledger.mjs start             begin a run: archive the previous ledger, record HEAD and a
+//                                     snapshot of the working tree, uncommitted work included
 //   node ledger.mjs add --skill <name> --tell <id> --action <action> --why "<reason>"
 //                       [--evidence "<check>"] [--file <path>] [--line <n>] [--what "<thing>"]
 //                       [--count <n>] [--commit <sha>]
@@ -23,7 +24,8 @@
 // The ledger lives at <repo root>/.unslop/ledger.jsonl (UNSLOP_LEDGER overrides). The folder
 // gets its own .gitignore, and in a git repo .unslop/ is also added to .git/info/exclude, so it
 // stays out of commits and lint runs without touching the project's .gitignore.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
@@ -36,6 +38,30 @@ const git = (...a) => {
   catch { return null; }
 };
 const root = git("rev-parse", "--show-toplevel") ?? process.cwd();
+
+// The working tree as a git tree: tracked changes and untracked files, ignored files left out.
+// It goes through a temporary copy of the index, so the real index and the worktree stay as they
+// are. Returns null outside git or before the first commit.
+function worktreeTree() {
+  const head = git("rev-parse", "--verify", "-q", "HEAD");
+  if (!head) return null;
+  const dir = mkdtempSync(join(tmpdir(), "unslop-index-"));
+  const index = join(dir, "index");
+  try {
+    const own = git("rev-parse", "--path-format=absolute", "--git-path", "index");
+    if (own && existsSync(own)) copyFileSync(own, index);
+    const env = { ...process.env, GIT_INDEX_FILE: index };
+    const run = (...a) => execFileSync("git", a, { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 1 << 28 }).trim();
+    if (!existsSync(index)) run("read-tree", head);
+    run("add", "-A");
+    return run("write-tree");
+  } catch {
+    return null;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 const ledgerPath = process.env.UNSLOP_LEDGER ? resolve(process.env.UNSLOP_LEDGER) : join(root, ".unslop", "ledger.jsonl");
 
 function fail(message) {
@@ -119,6 +145,17 @@ if (command === "start") {
     console.log(`ledger: archived the previous run in ${relative(process.cwd(), history) || history}`);
   }
   const start = { type: "start", time: new Date().toISOString(), head: git("rev-parse", "HEAD"), branch: git("rev-parse", "--abbrev-ref", "HEAD") };
+  // A run can start on top of uncommitted work (an agent's own edits, unslop-diff on HEAD). The
+  // report diffs against this snapshot, so that work is not mistaken for the run's changes. The
+  // ref keeps the snapshot from being garbage-collected.
+  const tree = worktreeTree();
+  if (tree) {
+    const snapshot = git("commit-tree", tree, "-p", start.head, "-m", "unslop run start");
+    if (snapshot) {
+      git("update-ref", "refs/unslop/start", snapshot);
+      start.snapshot = snapshot;
+    }
+  }
   appendFileSync(ledgerPath, JSON.stringify(start) + "\n");
   console.log(`ledger: started a run at ${start.head ? start.head.slice(0, 7) : "a directory without git"}`);
 } else if (command === "add") {

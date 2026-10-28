@@ -11,7 +11,7 @@ Each tell has a stable id (`react-9`) in [TELLS.md](TELLS.md). Fixes are **refac
 
 ## Workflow
 
-1. **Scope and baseline.** Use the scope the user named or the invoking skill passed. If `unslop-typescript` invoked this skill, reuse its baseline. Otherwise ask for scope (this branch's changes or the whole repo), then record typecheck, lint, and test results from a clean worktree. If the scope holds no React code (no `.jsx` or `.tsx` files and no modules importing `react`), report "nothing in scope" and stop.
+1. **Scope and baseline.** Use the scope the user named or the invoking skill passed. If `unslop-typescript` invoked this skill, reuse its baseline. Otherwise ask for scope (this branch's changes or the whole repo), then record typecheck, lint, and test results from a clean worktree. If the scope holds no React code (no `.jsx` or `.tsx` files and no modules importing `react`), report "nothing in scope" and stop. When the scope is a diff (a PR, a branch, or uncommitted work), run the scanners with `--diff=<base>` and fix only the lines the diff changed, as `unslop-diff` describes.
 2. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 3. **Learn the project's patterns.** The right fix depends on them. Find out:
    - The React version. React 19 passes `ref` as a prop, so `forwardRef` is not needed.

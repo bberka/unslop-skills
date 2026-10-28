@@ -12,6 +12,7 @@ Agent skills that find and remove AI slop: patterns that mark text, interfaces, 
 | `unslop-csharp` | C# and .NET code | `scan.mjs`, `dead-code.mjs` |
 | `unslop-tests` | Test suites in JS/TS, C#, Python, and Go | `scan.mjs` |
 | `unslop-all` | Surveys the repo, asks what to cover, then runs the applicable skills one pass at a time | `detect.mjs` |
+| `unslop-diff` | A PR, a branch, or uncommitted work: runs the applicable skills on the changed lines only | `detect.mjs` |
 
 ## How the skills call each other
 
@@ -33,6 +34,8 @@ unslop-all
 - Changes: a review branch with one commit per pass, the current branch left uncommitted, or a report only that changes no file.
 
 It then plans from the files inside that scope, so a docs folder gets only `unslop-text` and a backend folder never reaches `unslop-react`. Every skill also checks its own scope and stops with "nothing in scope" when it has no files to work on.
+
+`unslop-diff` runs the same chain on a pull request, a branch, or uncommitted work, with no questions. Every scanner takes `--diff=<base>` and keeps only findings on the lines the diff added or changed, so slop that was already in a touched file stays out of the PR. `--diff=HEAD` covers uncommitted work alone, which suits an agent checking its own changes before it commits.
 
 Skills reach each other by name, falling back to the sibling folder (`../unslop-ui/`), so install them together.
 
@@ -91,7 +94,7 @@ npm test        # fixture tests for every script, plus a check that scanner copi
 npm run sync    # copy shared/scan.mjs into every skill
 ```
 
-Each skill installs on its own, so shared scripts are vendored. `shared/scan.mjs` is copied into every skill that has a `scripts/rules.mjs`, and `shared/ledger.mjs` and `shared/report.mjs` into every skill, by `tools/sync.mjs`. Edit the shared copies only.
+Each skill installs on its own, so shared scripts are vendored. `tools/sync.mjs` copies `shared/scan.mjs` into every skill that has a `scripts/rules.mjs`, `shared/ledger.mjs` and `shared/report.mjs` into every skill, and `shared/detect.mjs` into `unslop-all` and `unslop-diff`. Edit the shared copies only.
 
 To add a tell:
 
