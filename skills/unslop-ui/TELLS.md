@@ -7,7 +7,7 @@ Ids are stable, and reports cite them. **(L)** marks the tells `scripts/scan.mjs
 
 These are taste calls. Each is a default that shows up regardless of subject. Any of them is fine when the brief asks for it. When nothing in the brief chose it, it is a tell.
 
-- **ui-1 Default gradients (L).** Purple, indigo, or violet washes into blue or pink, and gradient text on one headline word. Fix: a palette drawn from the subject. Flat color unless a gradient carries meaning.
+- **ui-1 Default gradients (L).** Purple, indigo, or violet washes into blue or pink, and gradient text on one headline word. The dark-mode version is a near-black hero with a radial glow at the top and a blurred color blob behind the headline. Fix: a palette drawn from the subject. Flat color unless a gradient carries meaning.
 - **ui-2 Hero formula.** Centered headline with one accented word, a subhead, a primary button plus "Learn more", and a "Trusted by" logo strip. Fix: open with the most characteristic thing in the subject's world, such as the product itself, a real screenshot, or a live demo.
 - **ui-3 Card-grid sameness.** Everything chopped into identical rounded cards, including the 3-up feature grid of icon-in-tinted-circle, title, and two lines. Fix: vary the form by content. Use a list for a list, a table for comparison, and prose for an argument.
 - **ui-4 One radius, one shadow (T).** The same `rounded-2xl` and `shadow-lg` on every element regardless of hierarchy. Fix: radius and elevation that encode hierarchy, from a small defined set.
@@ -27,6 +27,19 @@ These are taste calls. Each is a default that shows up regardless of subject. An
 - **ui-28 Decorative diagrams.** Node-and-edge graphs, orbiting logos, "architecture" illustrations, animated connection lines, and fake dashboards built from rectangles, placed to look technical. The more detail they carry, the less they say, because none of it is the product. The scanner flags an inline SVG from twelve shapes up as a candidate. Fix: a real screenshot, a real diagram with labels the reader needs, or nothing.
 - **ui-29 Code breadcrumbs (L).** File paths (`src/components/Hero.tsx`), `~/` prompts, `$ npm install` lines, and `font-mono` labels used as decoration in a product that isn't a developer tool, or on a page that isn't documentation. Fix: remove them. A docs page shows the path of the file it is documenting and nothing else. The scanner skips `docs/` folders.
 - **ui-30 Detail for its own sake.** Micro-labels on every element, four font sizes in one card, avatars, counters, status dots, and tooltips stacked on a hero, nested panels with their own headers. It reads as rich at a glance and as noise on use. Fix: one piece of information per element. Cut each decoration that the user never reads.
+
+### Trend tells
+
+Each of these was striking the first season it appeared and is now the fastest way to date a page to the year it was generated. None says anything about the product. They are template tells, so propose before restyling, and the fix for all of them is the same: an element drawn from the subject, or nothing.
+
+- **ui-31 Dithering and grain (L).** Dithered or halftoned images, a noise or grain overlay on every surface (`feTurbulence`, a `grain.png` layer), and dither shaders on hero images.
+- **ui-32 ASCII and video backgrounds (L).** An ASCII-art render over a looping background video, or the video alone, autoplaying and muted behind the headline. Both cost bandwidth and battery to show nothing the reader can use.
+- **ui-33 Grid and dot backgrounds (L).** The dotted or ruled "infinite canvas" background behind a hero or a whole page, from `bg-grid` and `DotPattern` components to the one-pixel `linear-gradient` trick. It is the stock backdrop of 2024 developer tools.
+- **ui-34 Logo marquees and holographic chrome (L).** An endlessly scrolling logo strip (`animate-marquee`), and iridescent, holographic, or chrome-metal treatments on logos and headline text. A still row of real customer logos is proof (`ui-8` judges the logos themselves); the motion and the shine are decoration.
+- **ui-35 Painterly backgrounds (L).** Mesh gradients, aurora washes, and impressionist or watercolor paintings blurred behind the content, usually from a shader library (`@paper-design/shaders`). They are the soft version of the gradient blob.
+- **ui-36 Pixel loaders and retro type (L).** Pixel-art spinners, `image-rendering: pixelated`, and 8-bit faces (Press Start 2P, Pixelify Sans, VT323, Silkscreen) on a product that isn't a game.
+- **ui-37 Squircles (L).** `corner-shape: squircle` or `superellipse`, and the `figma-squircle` and `react-squircle` libraries, applied to every corner to feel like iOS. The scanner finds them; the fix is the radius scale (`ui-4`).
+- **ui-38 Text-layout showpieces (L).** Headlines that reflow, measure, or animate per glyph with a layout engine such as Pretext, `SplitText`, or a per-character `motion` stagger. The scanner finds the imports. Static type that fits is the fix. If "pretext" meant the small line above the headline instead, that is the eyebrow of `ui-7`.
 
 ## Craft tells
 

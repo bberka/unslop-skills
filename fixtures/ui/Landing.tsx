@@ -53,3 +53,19 @@ export function Features() {
     </section>
   );
 }
+
+import { MeshGradient } from "@paper-design/shaders-react";
+import { layout } from "@chenglou/pretext";
+
+export function Trends() {
+  return (
+    <section className="bg-zinc-950 bg-gradient-to-b from-indigo-500/20 bg-grid-small">
+      <video autoPlay muted loop playsInline src="/bg.mp4" />
+      <div className="holographic">
+        <div className="animate-marquee">logos</div>
+      </div>
+      <MeshGradient />
+      <h2 className="squircle">{layout("Reflowing headline")}</h2>
+    </section>
+  );
+}

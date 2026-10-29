@@ -38,3 +38,18 @@
   font-family: "Instrument Serif", serif;
   letter-spacing: -0.04em;
 }
+
+.hero::after {
+  background-image: url("/grain.png");
+  filter: url(#dither);
+}
+
+.canvas {
+  background-image: linear-gradient(to right, #80808012 1px, transparent 1px);
+  corner-shape: squircle;
+}
+
+.loader {
+  image-rendering: pixelated;
+  font-family: "Press Start 2P", monospace;
+}

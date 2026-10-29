@@ -8,7 +8,13 @@ import { scannerTests, scan, script, fixtures } from "./helpers.mjs";
 
 scannerTests({ skill: "unslop-ui", fixture: "ui", slop: ["Landing.tsx", "site.css"], clean: ["Clean.tsx"],
   expect: ["ui-1", "ui-5", "ui-6", "ui-7", "ui-8", "ui-11", "ui-13", "ui-15", "ui-16", "ui-17", "ui-19", "ui-20", "ui-21",
-    "ui-22", "ui-23", "ui-24", "ui-25", "ui-26", "ui-27", "ui-28", "ui-29"] });
+    "ui-22", "ui-23", "ui-24", "ui-25", "ui-26", "ui-27", "ui-28", "ui-29", "ui-31", "ui-32", "ui-33", "ui-34", "ui-35", "ui-36", "ui-37", "ui-38"] });
+
+test("unslop-ui: trend tells are found in markup and in CSS", () => {
+  const titles = (file) => { const t = scan("unslop-ui", "ui", [file]).filter((f) => Number(f.id.slice(3)) >= 31 || f.title === "Dark-mode gradient hero").map((f) => f.title); return [...new Set(t)].sort(); };
+  assert.deepEqual(titles("Landing.tsx"), ["ASCII or video background", "Dark-mode gradient hero", "Grid or dot background", "Logo marquee or holographic chrome", "Painterly background", "Squircle", "Text-layout showpiece"]);
+  assert.deepEqual(titles("site.css"), ["Dithering or grain", "Grid or dot background", "Pixel loader or retro type", "Squircle"]);
+});
 
 test("unslop-ui: density tells report once per file with a count, and section numbering needs two", () => {
   const hits = scan("unslop-ui", "ui", ["Landing.tsx"]);
