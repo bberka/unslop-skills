@@ -3,9 +3,9 @@
 // components that share a role suffix (Button, Card, Modal...), names defined
 // more than once, and design-system folders. Feeds react-9 and react-10.
 // Usage: node inventory.mjs [--json] [paths...]
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative, resolve, dirname } from "node:path";
+import { listFiles } from "./files.mjs";
 
 const FILES = /\.(?:jsx|tsx)$/i;
 const SKIP = /(?:^|[\\/])(?:node_modules|\.git|dist|build|out|coverage|\.next|storybook-static|__tests__|__mocks__|__fixtures__|e2e|playwright|cypress)(?:[\\/]|$)|\.(?:test|spec|e2e|stories)\.[jt]sx$/;
@@ -19,25 +19,10 @@ const json = args.includes("--json");
 const targets = args.filter((a) => !a.startsWith("--"));
 if (!targets.length) targets.push(".");
 
-function list(dir) {
-  try {
-    return execFileSync("git", ["ls-files", "-z", "-co", "--exclude-standard"], { cwd: dir, maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] })
-      .toString().split("\0").filter(Boolean).map((f) => join(dir, f));
-  } catch {
-    const acc = [];
-    const walk = (d) => readdirSync(d, { withFileTypes: true }).forEach((e) => {
-      const p = join(d, e.name);
-      if (e.isDirectory() && !SKIP.test(p)) walk(p); else if (e.isFile()) acc.push(p);
-    });
-    walk(dir);
-    return acc;
-  }
-}
-
 const files = targets.flatMap((t) => {
   const abs = resolve(t);
   if (!existsSync(abs)) { console.error(`inventory: no such path: ${t}`); process.exit(2); }
-  return statSync(abs).isDirectory() ? list(abs) : [abs];
+  return statSync(abs).isDirectory() ? listFiles(abs, SKIP) : [abs];
 }).filter((f) => FILES.test(f) && !SKIP.test(relative(process.cwd(), f)) && existsSync(f));
 
 // A function body: `function`, `(args) =>`, or `arg =>`.

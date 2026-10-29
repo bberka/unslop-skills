@@ -4,6 +4,8 @@
 //   shared/scan.mjs    into every skill that ships a scripts/rules.mjs
 //   shared/ledger.mjs  into every skill
 //   shared/report.mjs  into every skill
+//   shared/worktree.mjs into every skill (ledger.mjs and report.mjs import it)
+//   shared/files.mjs   into every skill with an inventory script (tokens.mjs, inventory.mjs)
 //   shared/detect.mjs  into the skills that plan runs: unslop-all and unslop-diff
 // Usage: node tools/sync.mjs [--check]   (--check exits 1 when a copy is stale)
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
@@ -16,6 +18,8 @@ const SHARED = [
   { file: "scan.mjs", wanted: (scripts) => existsSync(join(scripts, "rules.mjs")) },
   { file: "ledger.mjs", wanted: () => true },
   { file: "report.mjs", wanted: () => true },
+  { file: "worktree.mjs", wanted: () => true },
+  { file: "files.mjs", wanted: (scripts) => ["tokens.mjs", "inventory.mjs"].some((f) => existsSync(join(scripts, f))) },
   { file: "detect.mjs", wanted: (_scripts, skill) => ["unslop-all", "unslop-diff"].includes(skill) },
 ];
 let stale = 0;

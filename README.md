@@ -91,10 +91,10 @@ node ~/.agents/skills/unslop-git/scripts/lint-msg.mjs --check "$1"
 
 ```bash
 npm test        # fixture tests for every script, plus a check that scanner copies are in sync
-npm run sync    # copy shared/scan.mjs into every skill
+npm run sync    # copy the shared scripts into every skill
 ```
 
-Each skill installs on its own, so shared scripts are vendored. `tools/sync.mjs` copies `shared/scan.mjs` into every skill that has a `scripts/rules.mjs`, `shared/ledger.mjs` and `shared/report.mjs` into every skill, and `shared/detect.mjs` into `unslop-all` and `unslop-diff`. Edit the shared copies only.
+Each skill installs on its own, so shared scripts are vendored. `tools/sync.mjs` copies `shared/scan.mjs` into every skill that has a `scripts/rules.mjs`; `shared/ledger.mjs`, `shared/report.mjs`, and `shared/worktree.mjs` into every skill; `shared/files.mjs` into the skills with an inventory script; and `shared/detect.mjs` into `unslop-all` and `unslop-diff`. Edit the shared copies only.
 
 To add a tell:
 

@@ -4,9 +4,9 @@
 // CSS custom properties that are defined but never read, and which files animate
 // versus which handle prefers-reduced-motion.
 // Usage: node tokens.mjs [--json] [--top N] [paths...]
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { listFiles } from "./files.mjs";
 
 const FILES = /\.(?:css|scss|sass|less|html?|jsx|tsx|vue|svelte|astro|razor|cshtml)$|tailwind\.config\.[cm]?[jt]s$/i;
 const SKIP = /(?:^|[\\/])(?:node_modules|\.git|dist|build|out|coverage|\.next|\.nuxt|\.svelte-kit|vendor|storybook-static|__tests__|__mocks__|__fixtures__|tests?|e2e|playwright|cypress)(?:[\\/]|$)|\.min\.css$|\.(?:test|spec|e2e|stories)\.[jt]sx$/;
@@ -19,25 +19,10 @@ const TOP = topAt === -1 ? 12 : Number(args[topAt + 1]);
 const targets = args.filter((a, i) => !a.startsWith("--") && (topAt === -1 || i !== topAt + 1));
 if (!targets.length) targets.push(".");
 
-function list(dir) {
-  try {
-    return execFileSync("git", ["ls-files", "-z", "-co", "--exclude-standard"], { cwd: dir, maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] })
-      .toString().split("\0").filter(Boolean).map((f) => join(dir, f));
-  } catch {
-    const acc = [];
-    const walk = (d) => readdirSync(d, { withFileTypes: true }).forEach((e) => {
-      const p = join(d, e.name);
-      if (e.isDirectory() && !SKIP.test(p)) walk(p); else if (e.isFile()) acc.push(p);
-    });
-    walk(dir);
-    return acc;
-  }
-}
-
 const files = targets.flatMap((t) => {
   const abs = resolve(t);
   if (!existsSync(abs)) { console.error(`tokens: no such path: ${t}`); process.exit(2); }
-  return statSync(abs).isDirectory() ? list(abs) : [abs];
+  return statSync(abs).isDirectory() ? listFiles(abs, SKIP) : [abs];
 }).filter((f) => FILES.test(f) && !SKIP.test(relative(process.cwd(), f)) && existsSync(f));
 
 const TW_COLORS = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";

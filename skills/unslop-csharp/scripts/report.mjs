@@ -9,11 +9,11 @@
 //           (uncommitted work at the start is not the run's change), else its HEAD, else HEAD.
 //           The other side is the working tree now, untracked files included.
 //   --out   output path. Default: report.html next to the ledger.
-import { readFileSync, writeFileSync, existsSync, readdirSync, copyFileSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { worktreeTree } from "./worktree.mjs";
 
 const MAX_DIFF_LINES = 800;
 const ACTIONS = ["remove", "delete-file", "rewrite", "merge", "move", "keep", "propose"];
@@ -33,28 +33,6 @@ const gitIn = (cwd) => (...a) => {
 const root = gitIn(process.cwd())("rev-parse", "--show-toplevel") ?? process.cwd();
 const git = gitIn(root);
 
-// The working tree as a git tree: tracked changes and untracked files, ignored files left out.
-// It goes through a temporary copy of the index, so the real index and the worktree stay as they
-// are. Returns null outside git or before the first commit.
-function worktreeTree() {
-  const head = git("rev-parse", "--verify", "-q", "HEAD");
-  if (!head) return null;
-  const dir = mkdtempSync(join(tmpdir(), "unslop-index-"));
-  const index = join(dir, "index");
-  try {
-    const own = git("rev-parse", "--path-format=absolute", "--git-path", "index");
-    if (own && existsSync(own)) copyFileSync(own, index);
-    const env = { ...process.env, GIT_INDEX_FILE: index };
-    const run = (...a) => execFileSync("git", a, { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 1 << 28 }).trim();
-    if (!existsSync(index)) run("read-tree", head);
-    run("add", "-A");
-    return run("write-tree");
-  } catch {
-    return null;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
 
 const isGit = git("rev-parse", "--is-inside-work-tree") === "true";
 const lines = (out) => (out ?? "").split("\n").filter(Boolean);
@@ -89,7 +67,7 @@ if (isGit && !base) {
   baseLabel = start?.head ? `run start, ${String(start.time ?? "").replace("T", " ").slice(0, 16)} UTC${start.branch ? ` on ${start.branch}` : ""}` : "HEAD, no start record";
 }
 const changed = new Map();
-const now = isGit ? worktreeTree() : null;
+const now = isGit ? worktreeTree(root) : null;
 if (isGit) {
   if (git("rev-parse", "--verify", "-q", base) === null) fail(`unknown base ${base}`);
   for (const line of lines(git("diff", "--name-status", "--find-renames", base, ...(now ? [now] : [])))) {
