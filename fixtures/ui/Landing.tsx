@@ -26,3 +26,30 @@ export function Landing() {
     </main>
   );
 }
+
+export function Features() {
+  return (
+    <section className="bg-white/5 border-white/10">
+      <nav className="font-mono text-xs"><span>~/src/components/Hero.tsx</span></nav>
+      <h2 className="font-serif tracking-tighter">Built for <em>people</em></h2>
+      <div className="flex gap-2 text-white/60 ring-white/20">
+        <span className="rounded-full text-xs">New</span>
+        <span className="rounded-full text-xs">Beta</span>
+        <span className="rounded-full text-xs">Pro</span>
+      </div>
+      <hr />
+      <div className="border rounded-xl p-6"><span>01</span></div>
+      <hr />
+      <div className="border rounded-xl p-6"><span>02</span></div>
+      <hr />
+      <div className="border rounded-xl p-6">c</div>
+      <div className="ring-1 rounded-lg px-4">d</div>
+      <div className="border rounded-xl py-6">e</div>
+      <svg viewBox="0 0 100 100">
+        <circle cx="10" cy="10" r="2" /><circle cx="20" cy="10" r="2" /><circle cx="30" cy="10" r="2" /><circle cx="40" cy="10" r="2" />
+        <line x1="10" y1="10" x2="20" y2="10" /><line x1="20" y1="10" x2="30" y2="10" /><line x1="30" y1="10" x2="40" y2="10" /><line x1="40" y1="10" x2="50" y2="10" />
+        <path d="M0 0" /><path d="M1 1" /><path d="M2 2" /><path d="M3 3" />
+      </svg>
+    </section>
+  );
+}

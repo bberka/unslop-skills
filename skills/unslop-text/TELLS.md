@@ -55,11 +55,12 @@ Ids are stable: other skills and reports cite them, and a retired tell leaves a 
 
 ## Formatting
 
-- **text-24 Bold sprinkling.** Bold on every term, product name, or "key" phrase. Fix: bold at most the one thing a skimmer must not miss.
+- **text-24 Bold and italic sprinkling.** Bold on every term, product name, or "key" phrase, and italics on words that carry no stress (*actually*, *really*, one *word* per sentence). Fix: bold at most the one thing a skimmer must not miss. Italic is for titles, foreign words, and stress the sentence needs.
 - **text-25 Inline-header lists (L).** "- **Performance:** Performance improved by 20%": a bold label that the line then restates. The scanner reports a label only when one of its words reappears in the first three words of the detail, outside quotes and not as a capitalized name, so "- **Discord**: join the server" and "- **Tetris Chat:** the streamer plays Tetris" stay silent. Fix: plain bullets or prose. A bold lead-in that names the item and is followed by new detail is fine.
 - **text-26 Title Case headings (L).** "Getting Started With The API". Fix: sentence case ("Getting started with the API"). The scanner reports a heading when a small word ("With", "The") is capitalized, or when most of its words appear lowercased in the body (so "Using Visual Studio Code" stays silent). A heading written the same way in the body ("Horse Race" as a game name) is a name and stays silent. More than five such headings in one file come back as one hit, because that is a convention to decide on once, and a repo style guide that mandates Title Case wins.
 - **text-27 Decorative emoji (L).** Emoji in headings and bullets (🚀 ✨ 💡 ✅). Fix: remove them.
 - **text-28 Typographic residue (L).** Curly quotes, `…`, `→` in plain-text sources (Markdown, comments, commit messages), reported once per line. Fix: straight quotes, `...`, "to". A chain of two or more arrows ("parse → validate → store") is flow notation and stays.
+- **text-34 Diagrams for lists (L).** A Mermaid flowchart or box-drawing diagram of three boxes in a row, where a sentence or a numbered list says the same. The more detail the diagram carries, the more it hides, because the reader can't search or quote it. The scanner reports Mermaid fences and box-drawing edges. Fix: a list. A diagram stays for branching, cycles, or layout that prose can't carry.
 - **text-29 Over-structure.** Headings over a three-paragraph doc, bullets for what is one sentence, nested bullets three deep, a table with one column. Fix: prose until structure helps the reader find something.
 
 ## Residue

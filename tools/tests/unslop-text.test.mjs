@@ -8,7 +8,7 @@ import { scannerTests, scan, script } from "./helpers.mjs";
 
 // Every (L) tell in TELLS.md. A tell added to the scanner needs a line in slop.md and an id here.
 scannerTests({ skill: "unslop-text", fixture: "text", slop: ["slop.md"], clean: ["clean.md"],
-  expect: ["text-1", "text-2", "text-3", "text-5", "text-7", "text-8", "text-9", "text-10", "text-11", "text-12", "text-15", "text-16", "text-17", "text-18", "text-19", "text-20", "text-25", "text-26", "text-27", "text-28", "text-30", "text-31", "text-32", "text-33"] });
+  expect: ["text-1", "text-2", "text-3", "text-5", "text-7", "text-8", "text-9", "text-10", "text-11", "text-12", "text-15", "text-16", "text-17", "text-18", "text-19", "text-20", "text-25", "text-26", "text-27", "text-28", "text-30", "text-31", "text-32", "text-33", "text-34"] });
 
 test("unslop-text: changelogs are skipped on a directory walk and scanned when named", () => {
   const walked = scan("unslop-text", "text", ["."]);

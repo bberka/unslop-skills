@@ -6,8 +6,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scannerTests, scan, script } from "./helpers.mjs";
 
-scannerTests({ skill: "unslop-csharp", fixture: "csharp", slop: ["UserManager.cs"], clean: ["OrderService.cs"],
-  expect: ["cs-5", "cs-7", "cs-8", "cs-9", "cs-10", "cs-11", "cs-12", "cs-13", "cs-14", "cs-15", "cs-16", "cs-17", "cs-18", "cs-19"] });
+scannerTests({ skill: "unslop-csharp", fixture: "csharp", slop: ["UserManager.cs", "Domain/Order.cs"], clean: ["OrderService.cs"],
+  expect: ["cs-5", "cs-7", "cs-8", "cs-9", "cs-10", "cs-11", "cs-12", "cs-13", "cs-14", "cs-15", "cs-16", "cs-17", "cs-18", "cs-19", "cs-24", "cs-25"] });
+
+test("csharp: implicit coupling is static mutable state or a service locator outside the composition root", () => {
+  assert.deepEqual(titles(["UserManager.cs"], "cs-25"), ["Service locator: .GetRequiredService<IUserRepository>()", "Static mutable state: public static string CurrentTenant { get; set;"]);
+  assert.deepEqual(titles(["Domain/Order.cs"], "cs-24"), ["Inner layer importing infrastructure: using Microsoft.EntityFrameworkCore"]);
+});
 
 const titles = (files, id) => scan("unslop-csharp", "csharp", files).filter((f) => f.id === id).map((f) => `${f.title}: ${f.match}`).sort();
 

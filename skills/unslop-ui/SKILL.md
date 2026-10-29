@@ -1,6 +1,6 @@
 ---
 name: unslop-ui
-description: "Audits and fixes the generic AI-generated look in interfaces and graphic design: template gradients and card grids, token sprawl, missing states, broken focus and contrast, marketing copy. Use when the user asks to unslop, de-template, or critique a UI, landing page, frontend, mockup, or screenshot."
+description: "Audits and fixes the generic AI-generated look in interfaces and graphic design: template gradients and card grids, display-serif and italic-accent defaults, badge, divider, and border clutter, opacity stacks, token sprawl, missing states, broken focus and contrast, marketing copy. Use when the user asks to unslop, de-template, or critique a UI, landing page, frontend, mockup, or screenshot."
 ---
 
 # Unslop UI
@@ -17,10 +17,10 @@ The project's design system and the user's brief override both lists. If the bri
 1. **Subject.** From the README, the brief, or the user, write down three things: what the product is, who uses it, and the screen's one job. Every template judgment is made relative to these. Done when each fits in one sentence.
 2. **Load the tells.** Read [TELLS.md](TELLS.md) in full.
 3. **Look.** Take screenshots at 1440px and 375px when the environment allows it (start the dev server and drive a browser or Playwright). If the user gave images or mockups, work from those. Otherwise read the markup and styles for every page or route in scope (the paths the user named, or the scope the invoking skill passed). If the scope holds no markup, styles, or components and the user gave no images, report "nothing in scope" and stop. When the scope is a diff (a PR, a branch, or uncommitted work), run the scanners with `--diff=<base>` and fix only the lines the diff changed, as `unslop-diff` describes. Done when every screen in scope has a screenshot or has been read.
-4. **Measure.** Run `node scripts/tokens.mjs <ui-src>` for distinct colors, neutrals, radii, shadows, fonts, sizes, unused CSS variables, and which files animate without a `prefers-reduced-motion` path. Run `node scripts/scan.mjs <ui-src>` for lexical tells. Find the project's scale (Tailwind config, CSS variables, theme file) so the counts have something to compare against. Done when you can say how many values the scale defines per category.
-5. **Findings.** List each finding as `screen or path:line  ui-N  what  ->  fix`, tagged craft or template. Every scanner hit is judged, and every screenshot is checked against the template tells the scanner can't see (`ui-2`, `-3`, `-9`, `-10`, `-12`, `-14`, `-18`).
+4. **Measure.** Run `node scripts/tokens.mjs <ui-src>` for distinct colors, neutrals, radii, shadows, fonts, sizes, opacity levels, unused CSS variables, and which files animate without a `prefers-reduced-motion` path. Run `node scripts/scan.mjs <ui-src>` for lexical tells. Find the project's scale (Tailwind config, CSS variables, theme file) so the counts have something to compare against. Done when you can say how many values the scale defines per category.
+5. **Findings.** List each finding as `screen or path:line  ui-N  what  ->  fix`, tagged craft or template. Every scanner hit is judged, and every screenshot is checked against the template tells the scanner can't see (`ui-2`, `-3`, `-9`, `-10`, `-12`, `-14`, `-18`, `-28`, `-30`).
 6. **Fix craft tells.**
-   - Map raw values onto the existing scale.
+   - Map raw values onto the existing scale, and collapse opacity mixes (`ui-26`) into named tokens.
    - Add the missing states.
    - Restore visible focus, and use native elements with accessible names.
    - Fix contrast to WCAG AA.

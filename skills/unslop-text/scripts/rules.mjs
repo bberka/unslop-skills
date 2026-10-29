@@ -122,6 +122,8 @@ export default [
   { id: "text-32", title: "Placeholder", files, prose: true,
     pattern: /\[(?:your|insert|company|product|name|date|link|author)\b[^\]]*\]|\blorem ipsum\b|\bexample\.com\b/i },
   { id: "text-32", title: "Placeholder", files, prose: true, pattern: /\b(?:TBD|TODO|FIXME|XXX)\b/ },
+  { id: "text-34", title: "Diagram for a list", files,
+    pattern: /^\s*(?:```|~~~)\s*mermaid\b|^\s*[┌╔][─═]{3,}|^\s*\+[-=]{3,}\+(?:[-=]{3,}\+)*\s*$/ },
   { id: "text-33", title: "Stacked connective", files, prose: true,
     pattern: /(?:^(?:\s*[-*+]\s+)?|[.!?]\s+)(?:Additionally|Furthermore|Moreover|Importantly|Ultimately|That being said|With that said),/ },
 ];

@@ -33,3 +33,8 @@
   background: var(--accent);
   border-radius: 8px;
 }
+
+.display {
+  font-family: "Instrument Serif", serif;
+  letter-spacing: -0.04em;
+}

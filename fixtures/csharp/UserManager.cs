@@ -31,8 +31,11 @@ namespace Demo
             }
         }
 
+        public static string CurrentTenant { get; set; } = "";
+
         public async void Refresh()
         {
+            var repository = _provider.GetRequiredService<IUserRepository>();
             await Task.Run(async () => await LoadAsync());
             await LoadAsync().ConfigureAwait(false);
             var client = new HttpClient();

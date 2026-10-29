@@ -20,3 +20,8 @@ As an AI language model, I can't run it for you. Replace [Your Name] in the conf
 I hope this helps! Happy coding!
 
 In the current AI landscape, single arrows → stand in for words.
+
+```mermaid
+flowchart LR
+  A[Install] --> B[Configure] --> C[Run]
+```

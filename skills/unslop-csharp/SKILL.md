@@ -1,6 +1,6 @@
 ---
 name: unslop-csharp
-description: "Finds and removes AI slop in C# and .NET code: interface-per-class, forwarding service layers, DTO sprawl, blocking on async, log-and-rethrow, null-check noise, restating XML docs, dead code. Use when the user asks to unslop, de-slop, or clean up a C#, .NET, or ASP.NET Core codebase, or to audit one for slop."
+description: "Finds and removes AI slop in C# and .NET code: interface-per-class, forwarding service layers, DTO sprawl, blocking on async, log-and-rethrow, null-check noise, restating XML docs, dead code, god files, static mutable state, layering violations, layer-first folders. Use when the user asks to unslop, de-slop, or clean up a C#, .NET, or ASP.NET Core codebase, or to audit one for slop."
 ---
 
 # Unslop C#
@@ -19,13 +19,15 @@ Each tell has a stable id (`cs-2`) in [TELLS.md](TELLS.md). Every fix is a **ref
    - Run `node scripts/dead-code.mjs <solution-or-project>` for unused usings, members, parameters, and locals (`cs-7`). It builds once with the dead-code analyzers injected and writes nothing into the repo.
    - Run `dotnet format <solution-or-project> --verify-no-changes --severity info --no-restore` for style drift against `.editorconfig` and the outdated idioms the analyzers know (`cs-13`: IDE0290 primary constructors, IDE0028 and IDE0300 collection expressions, IDE0161 file-scoped namespaces).
    - Run `npx jscpd --min-tokens 60 --format csharp --similarity <paths>` for clones (`cs-6`). `--similarity` also finds copies that differ only in names and literals.
-   - Then read every file in scope for the tells no tool sees: `cs-1` to `cs-4`, the reimplemented-BCL half of `cs-6`, the `!= null` half of `cs-11`, `cs-13`, `cs-20`.
+   - Then read every file in scope for the tells no tool sees: `cs-1` to `cs-4`, the reimplemented-BCL half of `cs-6`, the `!= null` half of `cs-11`, `cs-13`, `cs-20`, `cs-21`.
+   - For the architecture tells, look at the shape once: `ls src/*/` and the project references for `cs-26` and `cs-24`, and `git log --stat -20` for `cs-23`.
 
    For `cs-1`, list every `interface I...` and count its implementations and test doubles across the solution. Done when every file is read and every hit is judged.
 5. **Fix in batches,** with the smallest blast radius first:
    1. Residue and dead code: `cs-7`, `cs-16` to `cs-19`.
    2. Local idioms: `cs-8` to `cs-15`.
-   3. Structure: `cs-1` to `cs-6`.
+   3. Structure: `cs-1` to `cs-6`, `cs-22`.
+   4. Architecture: `cs-21`, `cs-23` to `cs-26`. These move files or change project references, so they are proposals (step 6) unless the user asked for the restructuring.
 
    Removing an interface or a layer means updating the DI registrations in `Program.cs` or the `ServiceCollection` extensions. After each batch, run `dotnet build` and `dotnet test`. If a batch goes red, fix it or revert it and record why.
 6. **Propose instead of fixing** anything that changes a public API in a library, alters the exception or logging behavior that operators depend on, enables nullable reference types project-wide, or reshapes the architecture. List these with the reason.

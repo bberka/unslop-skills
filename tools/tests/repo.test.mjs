@@ -16,5 +16,7 @@ test("scan.mjs writes a complete --json report through a pipe, past the 64 KB pi
   writeFileSync(join(dir, "noisy.ts"), "export const f = (x: any) => x;\n".repeat(3000));
   const out = execFileSync("node", [join(root, "skills", "unslop-typescript", "scripts", "scan.mjs"), "--json", "noisy.ts"], { cwd: dir, encoding: "utf8", maxBuffer: 1 << 26 });
   assert.ok(out.length > 65536);
-  assert.equal(JSON.parse(out).length, 3000);
+  const hits = JSON.parse(out);
+  assert.equal(hits.filter((f) => f.id === "ts-1").length, 3000);
+  assert.equal(hits.filter((f) => f.id === "ts-23").length, 1, "3000 lines is also a god file");
 });

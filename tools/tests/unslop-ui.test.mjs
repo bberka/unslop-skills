@@ -7,7 +7,23 @@ import { join } from "node:path";
 import { scannerTests, scan, script, fixtures } from "./helpers.mjs";
 
 scannerTests({ skill: "unslop-ui", fixture: "ui", slop: ["Landing.tsx", "site.css"], clean: ["Clean.tsx"],
-  expect: ["ui-1", "ui-5", "ui-6", "ui-7", "ui-8", "ui-11", "ui-13", "ui-15", "ui-16", "ui-17", "ui-19", "ui-20", "ui-21"] });
+  expect: ["ui-1", "ui-5", "ui-6", "ui-7", "ui-8", "ui-11", "ui-13", "ui-15", "ui-16", "ui-17", "ui-19", "ui-20", "ui-21",
+    "ui-22", "ui-23", "ui-24", "ui-25", "ui-26", "ui-27", "ui-28", "ui-29"] });
+
+test("unslop-ui: density tells report once per file with a count, and section numbering needs two", () => {
+  const hits = scan("unslop-ui", "ui", ["Landing.tsx"]);
+  const one = (title) => hits.filter((f) => f.title === title);
+  assert.equal(one("Badge and tag clutter").length, 1);
+  assert.match(one("Badge and tag clutter")[0].match, /^3 badges/);
+  assert.match(one("Dividers everywhere")[0].match, /^3 dividers/);
+  assert.match(one("Opacity stack")[0].match, /^4 distinct opacity levels/);
+  assert.match(one("Bordered boxes everywhere")[0].match, /^5 bordered boxes/);
+  assert.match(one("Inline diagram")[0].match, /^inline SVG with 12 shapes/);
+  assert.match(one("Section numbering")[0].match, /^2 zero-padded section numbers/);
+  assert.deepEqual(one("Italic word in a headline").length + one("Negative tracking").length + one("Code breadcrumb").length, 3);
+  const css = scan("unslop-ui", "ui", ["site.css"]).filter((f) => f.id === "ui-24").map((f) => f.title).sort();
+  assert.deepEqual(css, ["Display-serif default", "Negative tracking"]);
+});
 
 test("unslop-ui: arbitrary values are one hit per file with the count, and img is matched across lines", () => {
   const hits = scan("unslop-ui", "ui", ["Landing.tsx"]);
@@ -26,6 +42,7 @@ test("ui tokens.mjs counts sprawl, unused variables, and reduced-motion coverage
   const radii = report.radii.map((r) => r.value);
   assert.ok(radii.includes("rounded-2xl") && radii.includes("rounded-sm"));
   assert.ok(!radii.some((r) => /^rounded[a-z]/.test(r)), `rounded-lg stays rounded-lg: ${radii}`);
+  assert.deepEqual(report.opacities.map((o) => o.value).sort(), ["/10", "/20", "/5", "/60", "alpha 0.6"]);
   assert.ok(report.motion.animatedFiles.includes("site.css"));
   assert.deepEqual(report.motion.reducedMotionFiles, ["Clean.tsx"]);
 });

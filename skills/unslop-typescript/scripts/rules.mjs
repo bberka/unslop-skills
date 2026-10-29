@@ -5,8 +5,9 @@
 const files = /\.(?:[cm]?tsx?|[cm]?jsx?|svelte|vue|astro)$/i;
 const tsOnly = /\.(?:[cm]?tsx?|svelte|vue|astro)$/i;
 const exclude = /\.d\.[cm]?ts$|\.(?:test|spec|e2e|e2e-spec|stories)\.[cm]?[jt]sx?$|(?:^|\/)(?:__tests__|__mocks__|__fixtures__|generated|__generated__|e2e|playwright|cypress)\/|\.min\.js$|\.config\.[cm]?[jt]s$/;
-// Scripts, CLIs, and build tools print to the console on purpose.
-const consoleIsOutput = /(?:^|\/)(?:scripts?|bin|cli|tools)\//;
+// Scripts, CLIs, and build tools print to the console on purpose, and the files they read
+// (package.json, a manifest) are the repo's own, not a trust boundary.
+const tooling = /(?:^|\/)(?:scripts?|bin|cli|tools)\//;
 
 const junkDrawerFile = (_text, path) =>
   /(?:^|\/)(?:utils?|helpers?|common|misc)\.[cm]?[jt]sx?$/.test(path) ? [{ line: 1, match: path.split("/").pop() }] : [];
@@ -157,7 +158,47 @@ function swallowedErrors(text) {
   return hits;
 }
 
+// ts-22: an object type that holds loading, error, and data as independent fields can hold them
+// all at once. The React version (react-5) counts boolean useState calls instead.
+function illegalStates(text) {
+  const code = codeOnly(text);
+  const hits = [];
+  for (const m of code.matchAll(/\b(?:interface\s+\w+(?:<[^>]*>)?(?:\s+extends\s+[^{]+)?|type\s+\w+(?:<[^>]*>)?\s*=)\s*\{/g)) {
+    const open = m.index + m[0].length - 1;
+    const close = matching(code, open);
+    if (close === -1) continue;
+    const body = code.slice(open + 1, close);
+    const loading = /\b(?:is|has)?[lL]oading\??\s*:\s*boolean\b|\bisPending\??\s*:\s*boolean\b/.test(body);
+    const outcome = /\b(?:is)?[eE]rror\??\s*:|\b(?:data|result|value|payload|items)\??\s*:/.test(body);
+    if (loading && outcome) hits.push({ line: code.slice(0, m.index).split("\n").length, match: "loading, error, and data as independent fields" });
+  }
+  return hits;
+}
+
+// ts-23: lines of code, with blank lines and comments left out.
+function godFile(text) {
+  const n = codeOnly(text).split("\n").filter((l) => l.trim()).length;
+  return n >= 600 ? [{ line: 1, match: `${n} lines of code` }] : [];
+}
+
+// ts-25: dependencies point inward. Presentation code reaching the database or the disk, and
+// domain code reaching the web framework, are the two directions a scanner can see.
+const INFRA = /\bfrom\s+['"](?:@prisma\/client|drizzle-orm(?:\/[\w-]+)?|knex|pg|mysql2?|mongoose|typeorm|mongodb|better-sqlite3|ioredis|redis|node:fs(?:\/promises)?|fs(?:\/promises)?|node:child_process|child_process|node:net)['"]/;
+const FRAMEWORK = /\bfrom\s+['"](?:react|react-dom(?:\/[\w-]+)?|next(?:\/[\w-]+)?|express|fastify|hono|koa|@nestjs\/common|@prisma\/client|drizzle-orm(?:\/[\w-]+)?|mongoose|typeorm|svelte|vue)['"]/;
+const PRESENTATION = /(?:^|\/)(?:components|ui|views|hooks|stores?|widgets)\//;
+const SERVER_FILE = /(?:^|\/)(?:route|actions?|server|loader)\.[cm]?[jt]sx?$|\.server\.[cm]?[jt]sx?$|\+(?:page|layout)\.server\.|\+server\./;
+const DOMAIN = /(?:^|\/)(?:domain|core|entities|use-?cases)\//;
+
 const rules = [
+  { id: "ts-8", title: "Unvalidated boundary cast", files: tsOnly, exclude,
+    pattern: /\b(?:req(?:uest)?\.(?:body|query|params)|\w+\.json\(\)\)?|JSON\.parse\((?:[^()]|\([^()]*\))*\))\s*as\s+(?!unknown\b|const\b|any\b)\w+/,
+    filter: (_m, _line, path) => !tooling.test(path) },
+  { id: "ts-22", title: "Representable illegal state", files: tsOnly, exclude, check: illegalStates },
+  { id: "ts-23", title: "God file", files, exclude, check: godFile },
+  { id: "ts-25", title: "UI layer reaching infrastructure", files, exclude, pattern: INFRA,
+    filter: (_m, _line, path) => PRESENTATION.test(path) && !SERVER_FILE.test(path) },
+  { id: "ts-25", title: "Domain importing a framework", files, exclude, pattern: FRAMEWORK,
+    filter: (_m, _line, path) => DOMAIN.test(path) },
   { id: "ts-1", title: "Type escape hatch", files: tsOnly, exclude,
     pattern: /:\s*any\b|\bas any\b|<any>|\bany\[\]|Array<any>|Record<string,\s*any>|\bas unknown as\b/ },
   { id: "ts-2", title: "Silenced check without reason", files, exclude,
@@ -185,7 +226,7 @@ const rules = [
   { id: "ts-19", title: "Commented-out code", files, exclude,
     multiline: /(?:^[ \t]*\/\/[ \t]*(?:const |let |var |if ?\(|for ?\(|while ?\(|return\b|import |export |function |await |class |\}|[\w.]+\(.*\);?\s*$|[\w.]+\s*=\s*.+;\s*$)[^\n]*\n){2,}/m },
   { id: "ts-20", title: "Debug residue", files, exclude, pattern: /\bconsole\.(?:log|debug|trace)\(|^\s*debugger\b/,
-    filter: (_m, _line, path) => !consoleIsOutput.test(path) },
+    filter: (_m, _line, path) => !tooling.test(path) },
   { id: "ts-20", title: "Demo residue", files, exclude,
     pattern: /\bIn a real (?:app|application|implementation|project|world)|for demonstration purposes|simplified (?:version|example|implementation)|throw new Error\(\s*['"`]Not implemented/i },
   { id: "ts-20", title: "TODO without owner or issue", files, exclude,

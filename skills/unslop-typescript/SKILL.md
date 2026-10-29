@@ -1,6 +1,6 @@
 ---
 name: unslop-typescript
-description: "Finds and removes AI slop in TypeScript and JavaScript code: any-casts, impossible-state guards, catch-and-log, forwarding layers, speculative abstractions, duplication, dead code, narrating comments. Hands React code on to unslop-react. Use when the user asks to unslop, de-slop, or clean up a TS/JS codebase, or to audit one for slop."
+description: "Finds and removes AI slop in TypeScript and JavaScript code: any-casts, unvalidated boundary casts, catch-and-log, forwarding layers, speculative abstractions, duplication, dead code, narrating comments, god files, illegal states the types allow, layering violations, layer-first folders. Hands React code on to unslop-react. Use when the user asks to unslop, de-slop, or clean up a TS/JS codebase, or to audit one for slop."
 ---
 
 # Unslop TypeScript
@@ -18,13 +18,15 @@ Each tell has a stable id (`ts-12`) in [TELLS.md](TELLS.md). Every fix is a **re
    - Run `node scripts/scan.mjs <paths>` for lexical tells, with `--exclude <path>` for each excluded area. It reads the `<script>` blocks of `.svelte`, `.vue`, and `.astro` files, and skips tests, e2e suites, and declaration files.
    - Run `npx knip` for dead files, exports, and dependencies (`ts-15`), from the repo root so imports between workspaces count. Without a `knip` config in the repo, its unused-export list is a candidate list, not a verdict: each removal needs a whole-repo `rg -w <name>` with no consumer left, and that search is its ledger evidence.
    - Run `npx jscpd --min-tokens 50 --format "typescript,tsx,javascript,jsx" <paths>` for clones (`ts-14`). It respects `.gitignore` by default.
-   - Then read every file in scope for the tells no tool sees: `ts-5`, `-6`, `-8`, `-12`, `-13`, `-16`, `-21`. Start with the files that have the most hits.
+   - Then read every file in scope for the tells no tool sees: `ts-5`, `-6`, `-8`, `-12`, `-13`, `-16`, `-21`, `-22`, `-26`. Start with the files that have the most hits.
+   - For the architecture tells, look at the shape once: `ls src` (or the top of each package) for `ts-27`, and `git log --stat -20` for `ts-24`.
 
    Done when every file is read and every hit is judged.
 5. **Fix in batches,** with the smallest blast radius first:
    1. Residue: `ts-18`, `ts-19`, `ts-20`.
    2. Local idioms: `ts-1` to `ts-4`, `ts-7`, `ts-9` to `ts-11`.
-   3. Structure: `ts-5`, `ts-6`, `ts-12` to `ts-17`.
+   3. Structure: `ts-5`, `ts-6`, `ts-12` to `ts-17`, `ts-22`, `ts-23`.
+   4. Architecture: `ts-24` to `ts-27`. These move files, so they are proposals (step 6) unless the user asked for the restructuring.
 
    After each batch, run typecheck and tests. If a batch goes red, fix it or revert it and record why. When you delete dead code, delete the tests that only exercised it.
 6. **Propose instead of fixing** anything that changes exported API used outside the package, runtime behavior at a trust boundary (input, network, storage), dependencies, or architecture. List these with the reason.

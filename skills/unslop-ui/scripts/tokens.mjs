@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Design-token inventory: how many distinct colors, neutrals, radii, shadows,
-// font families, font sizes, weights, z-indexes, and arbitrary values a UI uses,
+// font families, font sizes, weights, z-indexes, opacity levels, and arbitrary values a UI uses,
 // CSS custom properties that are defined but never read, and which files animate
 // versus which handle prefers-reduced-motion.
 // Usage: node tokens.mjs [--json] [--top N] [paths...]
@@ -44,7 +44,7 @@ const TW_COLORS = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|gr
 const NEUTRAL_FAMILIES = new Set(["slate", "gray", "zinc", "neutral", "stone"]);
 const categories = {
   colors: new Map(), neutrals: new Map(), radii: new Map(), shadows: new Map(), fontFamilies: new Map(),
-  fontSizes: new Map(), fontWeights: new Map(), zIndex: new Map(), arbitrary: new Map(),
+  fontSizes: new Map(), fontWeights: new Map(), zIndex: new Map(), opacities: new Map(), arbitrary: new Map(),
 };
 const varsDefined = new Map();
 const varsUsed = new Set();
@@ -127,6 +127,11 @@ for (const file of files) {
     for (const m of line.matchAll(/z-index\s*:\s*(-?\d+)/g)) bump("zIndex", m[1], file);
     for (const m of line.matchAll(/(?<![\w-])-?z-(\d+|\[-?\d+\])(?![\w-])/g)) bump("zIndex", m[0], file);
 
+    for (const m of line.matchAll(/\b(?:bg|text|border|ring|from|via|to|fill|stroke|divide|outline|shadow|placeholder|decoration)-[a-z]+(?:-\d{2,3})?\/(\d{1,3})\b/g)) bump("opacities", `/${m[1]}`, file);
+    for (const m of line.matchAll(/(?<![\w-])opacity-(\d{1,3})\b/g)) bump("opacities", `/${m[1]}`, file);
+    for (const m of line.matchAll(/\b(?:rgba|hsla)\([^)]*,\s*(0?\.\d+)\s*\)/g)) bump("opacities", `alpha ${m[1]}`, file);
+    for (const m of line.matchAll(/\bopacity:\s*(0?\.\d+)/g)) bump("opacities", `alpha ${m[1]}`, file);
+
     for (const m of line.matchAll(/\b[a-z][\w-]*-\[([^\]\s]+)\]/g)) if (ARBITRARY_VALUE.test(m[1])) bump("arbitrary", m[0], file);
   }
 }
@@ -148,7 +153,7 @@ if (json) {
 
   const LABELS = {
     colors: "Colors", neutrals: "Neutrals (grays)", radii: "Radii", shadows: "Shadows", fontFamilies: "Font families",
-    fontSizes: "Font sizes", fontWeights: "Font weights", zIndex: "z-index values", arbitrary: "Arbitrary values",
+    fontSizes: "Font sizes", fontWeights: "Font weights", zIndex: "z-index values", opacities: "Opacity levels (ui-26)", arbitrary: "Arbitrary values",
   };
   console.log(`Scanned ${files.length} UI files.\n`);
   for (const [key, label] of Object.entries(LABELS)) {

@@ -109,7 +109,26 @@ function nullForgiving(text, path) {
   return count >= 3 ? [{ line: first, match: `${count} null-forgiving operators` }] : [];
 }
 
+// cs-22: lines of code, with blank lines and comment lines left out.
+function godFile(text, path) {
+  if (notShipped(text, path)) return [];
+  const n = text.split("\n").filter((l) => l.trim() && !/^\s*\/\//.test(l)).length;
+  return n >= 600 ? [{ line: 1, match: `${n} lines of code` }] : [];
+}
+
+const INNER_LAYER = /(?:^|\/)[\w.]*(?:Domain|Core|Entities|Abstractions)(?:\.[\w.]+)?\//;
+const COMPOSITION_ROOT = /(?:^|\/)(?:Program|Startup|[\w.]*Extensions|DependencyInjection|ServiceCollection\w*|[\w.]*Module)\.cs$/;
+
 export default [
+  { id: "cs-22", title: "God file", files, exclude, check: godFile },
+  { id: "cs-24", title: "Inner layer importing infrastructure", files, exclude, skipFile: notShipped,
+    pattern: /^\s*using\s+(?:Microsoft\.(?:EntityFrameworkCore|AspNetCore|Data\.SqlClient)|System\.Data(?:\.\w+)?|Dapper|Npgsql|MongoDB\.Driver|StackExchange\.Redis)\b/,
+    filter: (_m, _line, path) => INNER_LAYER.test(path) },
+  { id: "cs-25", title: "Static mutable state", files, exclude, skipFile: notShipped,
+    pattern: /\b(?:public|internal|protected)\s+static\s+(?!readonly\b|class\b|void\b|async\b|implicit\b|explicit\b|operator\b|event\b|extern\b|partial\b|unsafe\b|abstract\b|override\b|virtual\b|new\b|record\b|struct\b|interface\b|enum\b|delegate\b)[\w<>\[\],?.]+\s+\w+\s*(?:\{\s*get;\s*set;|=(?!>)|;)/ },
+  { id: "cs-25", title: "Service locator", files, exclude, skipFile: notShipped,
+    pattern: /\.Get(?:Required)?Service<\w+>\(\)/,
+    filter: (_m, _line, path) => !COMPOSITION_ROOT.test(path) },
   { id: "cs-5", title: "Junk-drawer class", files, exclude: new RegExp(`${exclude.source}|${demo.source}`, "i"), skipFile: notShipped,
     pattern: /\b(?:class|interface)\s+I?\w*(?:Manager|Helpers?|Utils?|Utility|Utilities|Processor)\b/ },
   { id: "cs-7", title: "Commented-out code", files, exclude, skipFile: notShipped,

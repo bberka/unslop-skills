@@ -6,8 +6,9 @@ const exclude = /\.(?:test|spec|e2e|stories)\.|(?:^|\/)(?:__tests__|__mocks__|__
 // Static assets under public/ are usually vendored (icon indexes, third-party pages).
 const vendoredHtml = /(?:^|\/)public\/.*\.html?$/i;
 
-// One hit per file with the count: the list of values lives in tokens.mjs.
-function perFile(re, label) {
+// One hit per file with the count: the list of values lives in tokens.mjs. `min` is the count
+// a file needs before it is reported, for tells that are density rather than presence.
+function perFile(re, label, min = 1) {
   return (text) => {
     const lines = text.split("\n");
     let first = null;
@@ -15,8 +16,47 @@ function perFile(re, label) {
     lines.forEach((l, i) => {
       for (const m of l.matchAll(re)) { n++; first ??= { line: i + 1, match: m[0] }; }
     });
-    return n ? [{ line: first.line, match: n === 1 ? first.match : `${n} ${label} in this file, e.g. ${first.match}` }] : [];
+    if (n < min) return [];
+    return [{ line: first.line, match: n === 1 ? first.match : `${n} ${label} in this file, e.g. ${first.match}` }];
   };
+}
+
+// Distinct opacity levels in one file: Tailwind `/NN` color modifiers, `opacity-NN`, and the
+// alpha of rgba()/hsla() literals. Four or more is a palette made of mixes.
+const OPACITY = /\b(?:bg|text|border|ring|from|via|to|fill|stroke|divide|outline|shadow|placeholder|decoration)-[a-z]+(?:-\d{2,3})?\/(\d{1,3})\b|\bopacity-(\d{1,3})\b|\b(?:rgba|hsla)\([^)]*,\s*(0?\.\d+)\s*\)|\bopacity:\s*(0?\.\d+)/g;
+function opacityStack(text) {
+  const seen = new Map();
+  text.split("\n").forEach((l, i) => {
+    for (const m of l.matchAll(OPACITY)) {
+      const level = m[1] ?? m[2] ?? m[3] ?? m[4];
+      if (!seen.has(level)) seen.set(level, { line: i + 1, match: m[0] });
+    }
+  });
+  if (seen.size < 4) return [];
+  const [first] = seen.values();
+  return [{ line: first.line, match: `${seen.size} distinct opacity levels in this file, e.g. ${first.match}` }];
+}
+
+// A bordered, rounded, padded block per line; five in one file is a page of outlined containers.
+const boxed = (l) => /\b(?:border|ring-1)\b/.test(l) && /\brounded(?:-\w+)?\b/.test(l) && /\bp[xy]?-\d/.test(l);
+function borderedBoxes(text) {
+  const lines = text.split("\n");
+  const hits = lines.map((l, i) => (boxed(l) ? i + 1 : 0)).filter(Boolean);
+  const css = lines.map((l, i) => (/\bborder:\s*1px\s+solid\b/.test(l) ? i + 1 : 0)).filter(Boolean);
+  const all = hits.length >= 5 ? hits : css.length >= 5 ? css : [];
+  return all.length ? [{ line: all[0], match: `${all.length} bordered boxes in this file` }] : [];
+}
+
+// An inline SVG with many shapes is a drawn diagram, not an icon. Icon sprites and icon
+// components are skipped by path.
+const iconFile = /(?:^|\/)icons?(?:\/|\.)|Icon\.(?:[jt]sx|svelte|vue|astro|html?)$/i;
+function inlineDiagram(text, path) {
+  if (iconFile.test(path)) return [];
+  const lines = text.split("\n");
+  const svgLine = lines.findIndex((l) => /<svg\b/.test(l));
+  if (svgLine === -1) return [];
+  const shapes = (text.match(/<(?:circle|line|path|rect|ellipse|polyline|polygon)\b/g) ?? []).length;
+  return shapes >= 12 ? [{ line: svgLine + 1, match: `inline SVG with ${shapes} shapes` }] : [];
 }
 
 // `A · B` meta strings, once per file. A page title separator ("Docs · Product") is the
@@ -68,6 +108,26 @@ const rules = [
     pattern: /\buppercase\b[^"'`\n]*\btracking-(?:wide|wider|widest|\[)|\btracking-(?:wider|widest)\b[^"'`\n]*\buppercase\b/ },
   { id: "ui-7", title: "Template chrome", files: markup, exclude, check: middleDots },
   { id: "ui-7", title: "Template chrome", files: markup, exclude, pattern: /→\s*(?:<\/|['"`])/ },
+  { id: "ui-7", title: "Section numbering", files: markup, exclude,
+    check: perFile(/>\s*\(?0[1-9][.)]?\s*<|[{(]\s*["']0[1-9]["']\s*[})]/g, "zero-padded section numbers", 2) },
+  { id: "ui-22", title: "Badge and tag clutter", files: markup, exclude,
+    check: perFile(/<(?:Badge|Chip|Tag|Pill)\b|\brounded-full\b[^"'`\n]*\btext-(?:xs|\[1[0-2]px\])\b|\btext-(?:xs|\[1[0-2]px\])\b[^"'`\n]*\brounded-full\b/g, "badges", 3) },
+  { id: "ui-23", title: "Italic word in a headline", files: markup, exclude,
+    multiline: /<h[1-3]\b[^>]*>(?:(?!<\/h[1-3]>)[\s\S]){0,200}?<(?:em\b|i\b|span\b[^>]*\bitalic\b)/ },
+  { id: "ui-23", title: "Italic serif accent", files, exclude,
+    pattern: /\bitalic\b[^"'`\n]*\bfont-(?:serif|display)\b|\bfont-(?:serif|display)\b[^"'`\n]*\bitalic\b/ },
+  { id: "ui-24", title: "Display-serif default", files, exclude,
+    pattern: /\b(?:Instrument[_ ]Serif|Playfair[_ ]Display|Fraunces|DM[_ ]Serif(?:[_ ](?:Display|Text))?|Cormorant(?:[_ ]Garamond)?|Newsreader|Libre[_ ]Caslon(?:[_ ](?:Display|Text))?|Gloock|Bodoni[_ ]Moda)\b/ },
+  { id: "ui-24", title: "Negative tracking", files, exclude,
+    pattern: /\btracking-tighter\b|\btracking-\[-|letter-spacing:\s*-0?\.0[3-9]\d*em|letter-spacing:\s*-(?:[1-9]\d*|0?\.[5-9]\d*)px/ },
+  { id: "ui-25", title: "Dividers everywhere", files: markup, exclude,
+    check: perFile(/<hr\b|<(?:Separator|Divider)\b|\bdivide-[xy](?:-\d+)?\b/g, "dividers", 3) },
+  { id: "ui-26", title: "Opacity stack", files, exclude, check: opacityStack },
+  { id: "ui-27", title: "Bordered boxes everywhere", files, exclude, check: borderedBoxes },
+  { id: "ui-28", title: "Inline diagram", files: markup, exclude, check: inlineDiagram },
+  { id: "ui-29", title: "Code breadcrumb", files: markup, exclude,
+    pattern: />\s*(?:~\/|\$\s|\.\/)[^<]{0,80}<|>[^<]*\b[\w-]+\/[\w-]+\/[\w.-]+\.(?:[cm]?[jt]sx?|css|md|py|rs|go|cs)\b[^<]*</,
+    filter: (_m, _line, path) => !/(?:^|\/)docs?\//i.test(path) },
   { id: "ui-8", title: "Fabricated proof", files: markup, exclude,
     pattern: /\b\d+(?:[.,]\d+)?[kKmM]?\+\s*(?:users|customers|developers|teams|companies|downloads|businesses|happy)\b|\b99\.9+%|\b(?:Trusted by|Loved by|Join) (?:thousands|millions|over|\d)/i },
   { id: "ui-11", title: "Motion everywhere", files, exclude,
