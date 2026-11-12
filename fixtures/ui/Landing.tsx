@@ -27,6 +27,16 @@ export function Landing() {
   );
 }
 
+export function Pricing({ name }: { name: string }) {
+  return (
+    <section className="min-h-screen">
+      <h1 className="font-extrabold">Welcome back, {name}</h1>
+      <span>Most Popular</span>
+      <p className="transition-[width]">Ship faster!</p>
+    </section>
+  );
+}
+
 export function Features() {
   return (
     <section className="bg-white/5 border-white/10">

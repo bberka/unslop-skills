@@ -107,9 +107,19 @@ function horizontalRules(text, path) {
   return rules.filter((r) => r.beforeHeading).map(({ line, match }) => ({ line, match }));
 }
 
+// Sentences that end in "!", once per file from three up. One is a voice; a page of them
+// is enthusiasm standing in for content.
+function exclamations(text) {
+  const hits = [];
+  text.split("\n").forEach((line, i) => {
+    for (const m of line.matchAll(/[A-Za-z)]!+(?=\s|$|["')*_])/g)) hits.push({ line: i + 1, match: m[0] });
+  });
+  return hits.length >= 3 ? [{ line: hits[0].line, match: `${hits.length} exclamation marks in this file` }] : [];
+}
+
 export default [
   { id: "text-1", title: "Inflated significance", files, prose: true,
-    pattern: /\b(?:plays? an? (?:crucial|pivotal|key|vital|significant|central|important) role|marks? an? (?:significant|major|important|key) (?:milestone|step|shift)|in today's (?:fast-paced|digital|modern|ever-changing|rapidly evolving)|stands? as an? (?:testament|reminder)|a testament to|cannot be overstated|at the forefront of|paves? the way)\b/i },
+    pattern: /\b(?:plays? an? (?:crucial|pivotal|key|vital|significant|central|important) role|marks? an? (?:significant|major|important|key) (?:milestone|step|shift)|in today's (?:fast-paced|digital|modern|ever-changing|rapidly evolving)|stands? as an? (?:testament|reminder)|a testament to|cannot be overstated|at the forefront of|paves? the way|watershed moment|(?:lasting|enduring|indelible) (?:impact|legacy|mark)|rich (?:cultural )?heritage|garnered (?:significant|considerable|widespread) attention)\b/i },
   { id: "text-2", title: "Trailing -ing commentary", files, prose: true,
     pattern: /[,—]\s*(?:ensuring|highlighting|underscoring|showcasing|reflecting|emphasi[sz]ing|fostering|demonstrating|illustrating|cementing|solidifying|reinforcing|making it (?:easier|possible|ideal))\b/i },
   { id: "text-3", title: "Vague attribution", files, prose: true,
@@ -117,30 +127,30 @@ export default [
   { id: "text-5", title: "Promotional register", files, prose: true, filter: asName,
     pattern: /\b(?:seamless(?:ly)?|robust|powerful|cutting[- ]edge|state[- ]of[- ]the[- ]art|game[- ]chang(?:er|ing)|revolutionary|revolutioni[sz]e[sd]?|world[- ]class|best[- ]in[- ]class|next[- ]gen(?:eration)?|blazing(?:ly)?[- ]fast|lightning[- ]fast|effortless(?:ly)?|supercharge[sd]?|unlock(?:s|ing)? (?:the (?:power|potential|full)|your|new (?:possibilities|levels|opportunities)|(?:true|full) potential)|unleash(?:es|ing)?|elevate[sd]?|empower(?:s|ing)?|turbocharge[sd]?)\b/i },
   { id: "text-7", title: "Preview or recap", files, prose: true,
-    pattern: /\b(?:in conclusion|in summary|to sum up|to summari[sz]e|all in all|in this (?:guide|article|post|tutorial|section|document|readme),? (?:we|you)(?:'ll| will)|this (?:guide|article|post|tutorial) (?:will|aims to))\b|(?:^|\.\s+)Overall,/i },
+    pattern: /\b(?:in conclusion|in summary|to sum up|to summari[sz]e|all in all|in this (?:guide|article|post|tutorial|section|document|readme),? (?:we|you)(?:'ll| will)|this (?:guide|article|post|tutorial) (?:will|aims to)|here are (?:the )?(?:\d+|three|four|five|six|seven|ten) (?:key |main |top |simple |quick )?(?:reasons|ways|tips|things|takeaways|lessons|steps)|(?:\d+|three|four|five|seven) key (?:takeaways|insights|points|lessons))\b|(?:^|\.\s+)Overall,/i },
   { id: "text-8", title: "Signposting or setup", files, prose: true,
-    pattern: /\b(?:let's (?:dive|delve|explore|take a (?:closer )?look|break (?:it|this) down|get started)|here's the (?:thing|kicker|catch|deal|best part)|without further ado|buckle up)\b|\b(?:The (?:result|catch|kicker|best part|answer|twist|secret)|Why does this matter)\?/i },
+    pattern: /\b(?:let's (?:dive|delve|explore|take a (?:closer )?look|break (?:it|this) down|get started)|let's (?:unpack|examine|be clear about)|here's the (?:thing|kicker|catch|deal|best part|problem)|here's (?:what (?:I mean|stood out|caught my eye|(?:is|'s) interesting|I find interesting)|why (?:that|this|it) matters)|this is where (?:it|things) gets? interesting|without further ado|buckle up|plot twist|spoiler(?: alert)?:|hot take|unpopular opinion|think about it(?: this way)?[:.]|the (?:short|long) answer is|(?:the )?(?:bottom line|key takeaway|answer)(?: is)?:|what does this mean for|why should you care\?|so,? what's next\?)\b|\b(?:The (?:result|catch|kicker|best part|answer|twist|secret)|Why does this matter)\?/i },
   { id: "text-9", title: "Generic closer", files, prose: true,
     pattern: /\b(?:the future (?:looks|is) bright|the possibilities are endless|only time will tell|happy (?:coding|hacking|building)|stay tuned|the sky's the limit)\b/i },
   { id: "text-10", title: "AI vocabulary", files, prose: true, filter: asName,
-    pattern: /\b(?:delv(?:e|es|ed|ing)|leverag(?:e|es|ed|ing)|utili[sz](?:e|es|ed|ing|ation)|facilitat(?:e|es|ed|ing)|pivotal|paramount|crucial|holistic|intricate|intricacies|nuanced|multifaceted|tapestry|embark(?:s|ed|ing)?|foster(?:s|ed|ing)?|bolster(?:s|ed|ing)?|cultivat(?:e|es|ed|ing)|testament|underscor(?:e|es|ed|ing)|showcas(?:e|es|ed|ing)|streamlin(?:e|es|ed|ing)|meticulous(?:ly)?|vibrant|bustling|ever[- ]evolving|paradigm|synerg(?:y|ies)|north star|comprehensive|navigat(?:e|es|ing) the|enhanc(?:e|es|ed|ing))\b/i },
+    pattern: /\b(?:delv(?:e|es|ed|ing)|leverag(?:e|es|ed|ing)|utili[sz](?:e|es|ed|ing|ation)|facilitat(?:e|es|ed|ing)|pivotal|paramount|crucial|holistic|intricate|intricacies|nuanced|multifaceted|tapestry|embark(?:s|ed|ing)?|foster(?:s|ed|ing)?|bolster(?:s|ed|ing)?|cultivat(?:e|es|ed|ing)|testament|underscor(?:e|es|ed|ing)|showcas(?:e|es|ed|ing)|streamlin(?:e|es|ed|ing)|meticulous(?:ly)?|vibrant|bustling|ever[- ]evolving|paradigm|synerg(?:y|ies)|north star|elucidat(?:e|es|ed|ing)|delineat(?:e|es|ed|ing)|underpin(?:s|ned|ning)?|unveil(?:s|ed|ing)?|invaluable|noteworthy|garner(?:s|ed|ing)?|spearhead(?:s|ed|ing)?|treasure trove|shed(?:s|ding)? (?:new )?light on|holds? (?:great |immense |significant )?promise|double-edged sword|at the intersection of|deep dive|comprehensive|navigat(?:e|es|ing) the|enhanc(?:e|es|ed|ing))\b/i },
   { id: "text-10", title: "AI vocabulary", files, prose: true, filter: asName,
     pattern: /\b(?:today's|current|competitive|digital|tech(?:nology)?|business|evolving|ever-changing|modern|software|AI|security|regulatory|market|media|political|cultural|economic|developer|frontend|JavaScript)\s+landscape\b|\blandscape of\b|\brealm of\b/i },
   { id: "text-11", title: "Copula dodging", files, prose: true,
     pattern: /(?<!\bto )\b(?:serves?|serving|stands?) as\b|\bboast(?:s|ing)?\b/i },
   { id: "text-12", title: "Negative parallelism", files, prose: true,
-    pattern: /\bnot (?:just|only|merely|simply) [^.,;:!?]{1,60}?,?\s+but(?: also)?\b|\b(?:it|this)(?:'s| is) not (?:just )?(?:about )?[^.;!?]{1,50}?[.,;—–-]+\s*(?:it|this)(?:'s| is)\b|\bisn't (?:just )?about\b/i },
+    pattern: /\bnot (?:just|only|merely|simply) [^.,;:!?]{1,60}?,?\s+but(?: also)?\b|\b(?:it|this)(?:'s| is) not (?:just )?(?:about )?[^.;!?]{1,50}?[.,;—–-]+\s*(?:it|this)(?:'s| is)\b|\bisn't (?:just )?about\b|\bNot because [^.!?]{1,70}[.!?]\s+Because\b|\b(?:isn't|is not|aren't) the (?:problem|point|issue|goal|hard part)\.\s+[A-Z]/i },
   { id: "text-15", title: "False range", files, prose: true,
     pattern: /\b(?:whether you(?:'re| are) an? [^,.]{1,40}? or an? |from (?:startups|beginners|small businesses|hobbyists|individuals|solo developers) to (?:enterprises|experts|large (?:enterprises|organi[sz]ations|teams))|for everyone from)/i },
   { id: "text-16", title: "Hedge stack", files, prose: true,
     pattern: /\b(?:(?:could|might|may) (?:potentially|possibly|perhaps)|it (?:could|can|might) be argued|arguably|to some extent)\b/i },
   { id: "text-17", title: "Filler phrase", files, prose: true,
-    pattern: /\b(?:in order to|due to the fact that|it is (?:important|worth|crucial|essential) to (?:note|mention|remember|understand)|it's (?:important|worth) (?:noting|mentioning|remembering)|it should be noted|when it comes to|a (?:wide|broad|diverse) (?:range|variety|array) of|at the end of the day|in terms of|for all intents and purposes|needless to say|first and foremost)\b/i },
+    pattern: /\b(?:in order to|due to the fact that|it is (?:important|worth|crucial|essential) to (?:note|mention|remember|understand)|it's (?:important|worth) (?:noting|mentioning|remembering)|it should be noted|when it comes to|a (?:wide|broad|diverse) (?:range|variety|array) of|at the end of the day|at its core|in essence|generally speaking|the reality is|it goes without saying|all things considered|in a world where|in an era of|(?:is|are|was|were) able to|ha(?:s|ve) the ability to|at this point in time|in the event that|the vast majority of|in terms of|for all intents and purposes|needless to say|first and foremost)\b/i },
   { id: "text-18", title: "Intensifier", files, prose: true, filter: asName,
-    pattern: /\b(?:truly|incredibly|extremely|remarkably|undeniably|absolutely|exceptionally|tremendously|profoundly|highly (?:scalable|performant|efficient)|super (?:easy|simple|fast))\b/i },
+    pattern: /\b(?:truly|incredibly|extremely|remarkably|undeniably|absolutely|exceptionally|tremendously|profoundly|fundamentally|genuinely|highly (?:scalable|performant|efficient)|super (?:easy|simple|fast))\b/i },
   { id: "text-19", title: "Em dash", files, prose: true, pattern: /(?<!\|[ \t]*)—|—(?![ \t]*\|)|\s–\s|\s--\s/ },
   { id: "text-20", title: "Staccato fragments", files, prose: true,
-    pattern: /\b(?:No|Zero) [\w-]+(?: [\w-]+)?\. (?:No|Zero|Just) [\w-]+|(?:^|\s)(?:[A-Z][a-z]+\.\s+){2}[A-Z][a-z]+\.(?:\s|$)/ },
+    pattern: /\b(?:No|Zero) [\w-]+(?: [\w-]+)?\. (?:No|Zero|Just) [\w-]+|(?:^|\s)(?:[A-Z][a-z]+\.\s+){2}[A-Z][a-z]+\.(?:\s|$)|\bAnd that's (?:okay|ok|fine)\.|\bThat's it\. That's\b/ },
   { id: "text-25", title: "Inline-header list item", files, prose: true, check: restatedLabels },
   { id: "text-26", title: "Title Case heading", files, prose: true, check: titleCaseHeadings },
   { id: "text-27", title: "Decorative emoji", files, prose: true,
@@ -148,14 +158,23 @@ export default [
     filter: (m, line) => !/[©®™]$/.test(m) && (LIST_ITEM.test(line) || /^#{1,6}\s/.test(line)) },
   { id: "text-28", title: "Typographic residue", files, prose: true, check: typographicResidue },
   { id: "text-30", title: "Chatbot residue", files, prose: true,
-    pattern: /\b(?:Certainly|Of course|Absolutely|Sure)!|\b(?:great question|good question|i hope this helps|hope this helps|let me know if|feel free to|happy to help|i'd be happy to|you're absolutely right)\b/i },
+    pattern: /\b(?:Certainly|Of course|Absolutely|Sure)!|\b(?:great question|good question|i hope this helps|hope this helps|let me know if|feel free to|happy to help|i'd be happy to|you're absolutely right|let me think step by step|here's my thought process|to answer your question|you're asking about)\b/i },
   { id: "text-31", title: "Model disclaimer", files, prose: true,
-    pattern: /\b(?:as an ai\b|as an? (?:ai )?language model|as of my (?:last|latest) (?:update|training)|my knowledge cutoff|i (?:don't|do not) have (?:access to|the ability to) (?:real-time|browse))/i },
+    pattern: /\b(?:as an ai\b|as an? (?:ai )?language model|as of my (?:last|latest) (?:update|training)|my knowledge cutoff|based on my training data|i (?:don't|do not) have (?:access to|the ability to) (?:real-time|browse))/i },
   { id: "text-32", title: "Placeholder", files, prose: true,
     pattern: /\[(?:your|insert|company|product|name|date|link|author)\b[^\]]*\]|\blorem ipsum\b|\bexample\.com\b/i },
   { id: "text-32", title: "Placeholder", files, prose: true, pattern: /\b(?:TBD|TODO|FIXME|XXX)\b/ },
   { id: "text-34", title: "Diagram for a list", files,
     pattern: /^\s*(?:```|~~~)\s*mermaid\b|^\s*[┌╔][─═]{3,}|^\s*\+[-=]{3,}\+(?:[-=]{3,}\+)*\s*$/ },
+  { id: "text-36", title: "Manufactured emphasis", files, prose: true,
+    pattern: /(?:^|[.!?]\s+)(?:Full stop|Period)\.(?=\s|$)|\b(?:let that sink in|read that again|make no mistake|this matters because|the (?:honest|uncomfortable|hard|simple|brutal|sad) truth|the truth is,|let me be clear|let's be (?:real|honest|clear)|to be (?:honest|frank|fair),|i'm going to be honest|trust me|believe me|what (?:nobody|no one) tells you|(?:nobody|no one)(?: is|'s)? talk(?:s|ing) about|(?:everyone|everybody)(?: is|'s) missing|it's no secret that)\b/i },
+  { id: "text-37", title: "False agency", files, prose: true,
+    pattern: /\b(?:numbers|data|results|figures|facts|metrics|stats|statistics) (?:speaks?|tells?|paints?) (?:for (?:itself|themselves)|a (?:\w+ )?(?:story|picture|tale))|\bpaints? a (?:clear|vivid|stark|bleak|grim|rosy|compelling|different) picture\b|\btells? a (?:clear|compelling|different|similar|powerful) story\b/i },
+  { id: "text-38", title: "False balance", files, prose: true,
+    pattern: /\b(?:While|Although) [^.!?]{3,90}?, [^.!?]{0,70}?\b(?:remains? (?:a challenge|an open question|to be seen|unclear)|(?:is|are) still (?:a challenge|an open question|early))|\bon (?:the )?one hand\b|\bit remains to be seen\b|\bboth (?:sides|approaches|options) have (?:their )?(?:merits?|pros and cons|strengths)\b|\bthere(?:'s| is) no (?:one-size-fits-all|single right|right or wrong|silver bullet)\b|\b(?:it|the (?:right )?(?:choice|answer|decision)) (?:ultimately |really )?depends on your (?:specific )?(?:needs|use case|requirements|goals)\b/i },
+  { id: "text-39", title: "Exclamation marks", files, prose: true, check: exclamations },
+  { id: "text-41", title: "Stock outline", files, prose: true,
+    pattern: /^#{1,6}\s+(?:\d+[.)]\s+)?(?:Conclusions?|Final Thoughts|Closing Thoughts|Key Takeaways|Wrapping (?:It )?Up|Looking Ahead|The Road Ahead|The Bottom Line|The Future of\b.*|Challenges and (?:Future|Opportunities|Considerations)\b.*)\s*$/i },
   { id: "text-35", title: "Horizontal rule", files, prose: true, check: horizontalRules },
   { id: "text-33", title: "Stacked connective", files, prose: true,
     pattern: /(?:^(?:\s*[-*+]\s+)?|[.!?]\s+)(?:Additionally|Furthermore|Moreover|Importantly|Ultimately|That being said|With that said),/ },

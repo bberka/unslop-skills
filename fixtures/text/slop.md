@@ -21,7 +21,11 @@ In order to configure it, you could potentially edit `robust.config.js`. The cac
 
 As an AI language model, I can't run it for you. Replace [Your Name] in the config before you start.
 
+Make no mistake, the numbers speak for themselves. While the plugin API is promising, stability remains a challenge.
+
 I hope this helps! Happy coding!
+
+## Final Thoughts
 
 In the current AI landscape, single arrows → stand in for words.
 
