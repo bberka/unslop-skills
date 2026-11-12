@@ -42,7 +42,7 @@ These tells cross files. Each fix moves code around, so it is a proposal unless 
 
 ## Residue
 
-- **ts-18 Narrating comments (L).** `// Import dependencies`, `// Loop through users`, `// Return the result`, section banners, and JSDoc that restates the signature (`@param id - The id`). Fix: delete. Keep comments that explain *why*: a constraint, a workaround with a link, a non-obvious invariant.
+- **ts-18 Narrating comments (L).** `// Import dependencies`, `// Loop through users`, `// Return the result`, section banners (`// ===== Helpers =====`, `// ── Helpers ──────`), and JSDoc that restates the signature (`@param id - The id`). Fix: delete. Keep comments that explain *why*: a constraint, a workaround with a link, a non-obvious invariant.
 - **ts-19 Commented-out code (L).** Fix: delete it.
 - **ts-20 Debug and demo residue (L).** `console.log`, `debugger`, "In a real app you would…", "simplified for demonstration", `throw new Error("Not implemented")` in shipped paths, TODOs with no owner or issue. The scanner treats console output in `scripts/`, `bin/`, `cli/`, and `tools/` as intended, and accepts `TODO(name)`, `#123`, a ticket key, or a URL as an owner. Fix: finish the work, delete it, or link the TODO to an issue.
 - **ts-21 Generic names.** `data2`, `handleData`, `processItem`, `doStuff`, `temp`, and `result` living longer than three lines. Fix: name what the value is in the domain.

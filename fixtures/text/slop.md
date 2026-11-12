@@ -7,6 +7,10 @@ It's not just a CLI, but a complete platform. Whether you're a beginner or an ex
 - **Performance:** Performance is blazing fast.
 - **Safety:** Safety is built in.
 
+---
+
+## Setup
+
 Let's dive in! No config. No boilerplate. Just code.
 
 ```bash

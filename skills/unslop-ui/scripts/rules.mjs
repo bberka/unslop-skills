@@ -47,6 +47,29 @@ function borderedBoxes(text) {
   return all.length ? [{ line: all[0], match: `${all.length} bordered boxes in this file` }] : [];
 }
 
+// Lines drawn between blocks. Explicit dividers are rule elements, `divide-*`, one-pixel
+// hairline elements, and a literal `|` or bullet between items. Side borders (`border-t`,
+// `border-bottom: 1px solid`) do the same job, but a header and a footer each own one, so
+// they only count toward a higher total. Removals (`border-b-0`, `border-top: none`), side
+// colors (`border-t-stone-200`), and breadcrumb separators are not counted.
+const DIVIDER = /<hr\b|<(?!Breadcrumb)[\w.:-]*(?:Separator|Divider|-separator|-divider)\b|\brole=["']separator["']|\bdivide-[xy](?:-(?!reverse\b)[\w[\]]+)?\b|\b[hw]-(?:px|\[1px\]|0\.5)(?![\w-])|>\s*[|•]\s*</g;
+const SIDE_BORDER = /(?<![\w-])border-[tby](?:-(?:[1-9]\d*|\[\d[^\]]*\]))?(?![\w-])|\bborder-(?:top|bottom|block(?:-start|-end)?)(?:-width)?\s*:\s*(?!\s|0\b|none\b)|\bborder(?:Top|Bottom|Block)(?:Width)?\s*:\s*(?!\s|0\b|["'`]?none\b)/g;
+function dividers(text, path) {
+  const lines = text.split("\n");
+  const count = (re, on) => {
+    let n = 0;
+    let first = null;
+    lines.forEach((l, i) => { for (const m of l.matchAll(re)) { n++; first ??= { line: i + 1, match: m[0].trim() }; } });
+    return on ? { n, first } : { n: 0, first: null };
+  };
+  const explicit = count(DIVIDER, markup.test(path));
+  const sides = count(SIDE_BORDER, true);
+  if (explicit.n >= 3 && sides.n === 0) return [{ line: explicit.first.line, match: `${explicit.n} dividers in this file, e.g. ${explicit.first.match}` }];
+  if (explicit.n < 3 && explicit.n + sides.n < 5) return [];
+  const first = [explicit.first, sides.first].filter(Boolean).sort((a, b) => a.line - b.line)[0];
+  return [{ line: first.line, match: `${explicit.n + sides.n} dividers in this file (${explicit.n} rule elements, ${sides.n} side borders), e.g. ${first.match}` }];
+}
+
 // An inline SVG with many shapes is a drawn diagram, not an icon. Icon sprites and icon
 // components are skipped by path.
 const iconFile = /(?:^|\/)icons?(?:\/|\.)|Icon\.(?:[jt]sx|svelte|vue|astro|html?)$/i;
@@ -138,8 +161,7 @@ const rules = [
     pattern: /\b(?:Instrument[_ ]Serif|Playfair[_ ]Display|Fraunces|DM[_ ]Serif(?:[_ ](?:Display|Text))?|Cormorant(?:[_ ]Garamond)?|Newsreader|Libre[_ ]Caslon(?:[_ ](?:Display|Text))?|Gloock|Bodoni[_ ]Moda)\b/ },
   { id: "ui-24", title: "Negative tracking", files, exclude,
     pattern: /\btracking-tighter\b|\btracking-\[-|letter-spacing:\s*-0?\.0[3-9]\d*em|letter-spacing:\s*-(?:[1-9]\d*|0?\.[5-9]\d*)px/ },
-  { id: "ui-25", title: "Dividers everywhere", files: markup, exclude,
-    check: perFile(/<hr\b|<(?:Separator|Divider)\b|\bdivide-[xy](?:-\d+)?\b/g, "dividers", 3) },
+  { id: "ui-25", title: "Dividers everywhere", files, exclude, check: dividers },
   { id: "ui-26", title: "Opacity stack", files, exclude, check: opacityStack },
   { id: "ui-27", title: "Bordered boxes everywhere", files, exclude, check: borderedBoxes },
   { id: "ui-28", title: "Inline diagram", files: markup, exclude, check: inlineDiagram },

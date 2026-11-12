@@ -75,6 +75,38 @@ function typographicResidue(text) {
   return hits;
 }
 
+// Thematic breaks: `---`, `***`, `___`, their spaced forms, a run of box-drawing dashes, and
+// `<hr>`. Front matter fences, setext underlines (text on the line above), table rows, and
+// RST overlines are not rules. One or two rules in a file can be real breaks, so they are
+// reported only when a heading follows (the heading already separates). From three up the
+// file comes back as one hit with the count.
+const RULE_LINE = /^\s{0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|[─━═]{3,}|={4,}|<hr\b[^>]*>)\s*$/i;
+function horizontalRules(text, path) {
+  if (/\.adoc$/i.test(path)) return [];
+  const lines = text.split("\n");
+  let start = 0;
+  if (/^---\s*$/.test(lines[0] ?? "")) {
+    const end = lines.findIndex((l, i) => i > 0 && /^(?:---|\.\.\.)\s*$/.test(l));
+    if (end > 0) {
+      // Slide decks (Marp, Slidev, reveal) use `---` between slides.
+      if (lines.slice(1, end).some((l) => /^(?:marp|theme|paginate|layout|revealOptions)\s*:/.test(l))) return [];
+      start = end + 1;
+    }
+  }
+  const blank = (l) => l === undefined || !l.trim();
+  const rules = [];
+  for (let i = start; i < lines.length; i++) {
+    if (!RULE_LINE.test(lines[i])) continue;
+    const html = /<hr\b/i.test(lines[i]);
+    if (!html && i > start && !blank(lines[i - 1])) continue;
+    if (!html && !blank(lines[i + 1]) && RULE_LINE.test(lines[i + 2] ?? "")) continue;
+    const next = lines.slice(i + 1).find((l) => !blank(l));
+    rules.push({ line: i + 1, match: lines[i].trim(), beforeHeading: next !== undefined && /^\s{0,3}#{1,6}\s/.test(next) });
+  }
+  if (rules.length >= 3) return [{ line: rules[0].line, match: `${rules.length} horizontal rules in this file` }];
+  return rules.filter((r) => r.beforeHeading).map(({ line, match }) => ({ line, match }));
+}
+
 export default [
   { id: "text-1", title: "Inflated significance", files, prose: true,
     pattern: /\b(?:plays? an? (?:crucial|pivotal|key|vital|significant|central|important) role|marks? an? (?:significant|major|important|key) (?:milestone|step|shift)|in today's (?:fast-paced|digital|modern|ever-changing|rapidly evolving)|stands? as an? (?:testament|reminder)|a testament to|cannot be overstated|at the forefront of|paves? the way)\b/i },
@@ -124,6 +156,7 @@ export default [
   { id: "text-32", title: "Placeholder", files, prose: true, pattern: /\b(?:TBD|TODO|FIXME|XXX)\b/ },
   { id: "text-34", title: "Diagram for a list", files,
     pattern: /^\s*(?:```|~~~)\s*mermaid\b|^\s*[┌╔][─═]{3,}|^\s*\+[-=]{3,}\+(?:[-=]{3,}\+)*\s*$/ },
+  { id: "text-35", title: "Horizontal rule", files, prose: true, check: horizontalRules },
   { id: "text-33", title: "Stacked connective", files, prose: true,
     pattern: /(?:^(?:\s*[-*+]\s+)?|[.!?]\s+)(?:Additionally|Furthermore|Moreover|Importantly|Ultimately|That being said|With that said),/ },
 ];

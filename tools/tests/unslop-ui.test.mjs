@@ -53,6 +53,20 @@ test("ui tokens.mjs counts sprawl, unused variables, and reduced-motion coverage
   assert.deepEqual(report.motion.reducedMotionFiles, ["Clean.tsx"]);
 });
 
+test("unslop-ui: ui-25 counts hairlines, menu separators, and side borders, and leaves a header and footer alone", () => {
+  const dir = mkdtempSync(join(tmpdir(), "unslop-div-"));
+  writeFileSync(join(dir, "Rules.tsx"), '<div>\n<div className="h-px w-full bg-border" />\n<DropdownMenuSeparator />\n<span>|</span>\n<BreadcrumbSeparator />\n</div>\n');
+  writeFileSync(join(dir, "Sections.tsx"), '<main>\n<header className="border-b">h</header>\n<section className="border-t py-8">a</section>\n<section className="border-t py-8">b</section>\n<section className="border-y py-8">c</section>\n<Separator />\n<li className="border-b-0 border-b-stone-200">x</li>\n</main>\n');
+  writeFileSync(join(dir, "Shell.tsx"), '<div>\n<header className="border-b">h</header>\n<Separator />\n<footer className="border-t">f</footer>\n</div>\n');
+  writeFileSync(join(dir, "page.css"), ".a{border-bottom:1px solid #ddd}\n.b{border-top:1px solid #ddd}\n.c{border-bottom:1px solid #ddd}\n.d{border-top: none}\n.e{border-block:1px solid #ddd}\n.f{border-bottom-width:1px}\n");
+  const out = JSON.parse(execFileSync("node", [script("unslop-ui", "scan.mjs"), "--json", "Rules.tsx", "Sections.tsx", "Shell.tsx", "page.css"], { cwd: dir, encoding: "utf8" }));
+  const hits = Object.fromEntries(out.filter((f) => f.id === "ui-25").map((f) => [f.file, f.match]));
+  assert.deepEqual(Object.keys(hits).sort(), ["Rules.tsx", "Sections.tsx", "page.css"]);
+  assert.match(hits["Rules.tsx"], /^3 dividers in this file, e\.g\. h-px/);
+  assert.match(hits["Sections.tsx"], /^5 dividers in this file \(1 rule elements, 4 side borders\)/);
+  assert.match(hits["page.css"], /^5 dividers in this file \(0 rule elements, 5 side borders\)/);
+});
+
 test("ui scan.mjs skips compiled Tailwind output", () => {
   const dir = mkdtempSync(join(tmpdir(), "unslop-tw-"));
   writeFileSync(join(dir, "out.css"), "/*! tailwindcss v4.1.0 | MIT License */\n.a{outline:none;backdrop-filter:blur(8px)}\n");

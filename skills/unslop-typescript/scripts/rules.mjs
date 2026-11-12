@@ -220,7 +220,7 @@ const rules = [
     pattern: /\b(?:class|interface)\s+\w*(?:Manager|Helpers?|Utils?|Utility|Processor)\b/ },
   { id: "ts-18", title: "Narrating comment", files, exclude,
     pattern: /^\s*\/\/\s*(?:Imports?|Define|Defining|Create|Creating|Initiali[sz]e|Initiali[sz]ing|Set ?up|Returns?|Returning|Call|Calling|Get|Getting|Check if|Loop (?:through|over)|Iterate (?:through|over)|Handle|Handling|Export|Declare|Update|Updating|Fetch|Fetching|Render|Rendering)\b[^.]{0,40}$/i },
-  { id: "ts-18", title: "Section banner", files, exclude, pattern: /^\s*(?:\/\/|\/\*+)\s*[=\-*#]{4,}/ },
+  { id: "ts-18", title: "Section banner", files, exclude, pattern: /^\s*(?:\/\/|\/\*+)\s*(?:[=\-*#]{4,}|[─━═]{2,})/ },
   { id: "ts-18", title: "JSDoc restating the signature", files, exclude,
     pattern: /@param\s+(?:\{[^}]*\}\s+)?\[?(\w+)\]?\s*-?\s*(?:The|A|An)\s+\1\b\.?\s*$|@returns?\s+(?:\{[^}]*\}\s+)?(?:The result|Returns? the|the return value)\b/i },
   { id: "ts-19", title: "Commented-out code", files, exclude,

@@ -8,7 +8,7 @@ import { scannerTests, scan, script } from "./helpers.mjs";
 
 // Every (L) tell in TELLS.md. A tell added to the scanner needs a line in slop.md and an id here.
 scannerTests({ skill: "unslop-text", fixture: "text", slop: ["slop.md"], clean: ["clean.md"],
-  expect: ["text-1", "text-2", "text-3", "text-5", "text-7", "text-8", "text-9", "text-10", "text-11", "text-12", "text-15", "text-16", "text-17", "text-18", "text-19", "text-20", "text-25", "text-26", "text-27", "text-28", "text-30", "text-31", "text-32", "text-33", "text-34"] });
+  expect: ["text-1", "text-2", "text-3", "text-5", "text-7", "text-8", "text-9", "text-10", "text-11", "text-12", "text-15", "text-16", "text-17", "text-18", "text-19", "text-20", "text-25", "text-26", "text-27", "text-28", "text-30", "text-31", "text-32", "text-33", "text-34", "text-35"] });
 
 test("unslop-text: changelogs are skipped on a directory walk and scanned when named", () => {
   const walked = scan("unslop-text", "text", ["."]);
@@ -31,6 +31,16 @@ test("unslop-text: text-26 needs evidence that the heading words are common word
   assert.deepEqual(ids("# Visual Studio Code\n\nThe extension reads the config.\n"), []);
   const many = Array.from({ length: 7 }, (_, i) => `## Install Guide ${i}\n\nThe install guide.\n`).join("\n");
   assert.equal(scanText(many).filter((f) => f.id === "text-26").length, 1, "collapses to one hit per file");
+});
+
+test("unslop-text: text-35 reports a rule above a heading, and a file once from three rules up", () => {
+  const rules = (text) => scanText(text).filter((f) => f.id === "text-35").map((f) => `${f.line} ${f.match}`);
+  assert.deepEqual(rules("# Doc\n\nIntro.\n\n---\n\n## Next\n\nBody.\n"), ["5 ---"]);
+  assert.deepEqual(rules("# Doc\n\nScene one.\n\n---\n\nScene two.\n"), [], "a lone break between paragraphs stays");
+  assert.deepEqual(rules("One.\n\n---\n\nTwo.\n\n* * *\n\nThree.\n\n<hr />\n\nFour.\n"), ["3 3 horizontal rules in this file"]);
+  const notRules = "---\ntitle: x\n---\n\nSetext\n---\n\n| a | b |\n| --- | --- |\n\n```\n---\n\n---\n\n---\n```\n";
+  assert.deepEqual(rules(notRules), [], "front matter, setext underlines, table rows, and code are not rules");
+  assert.deepEqual(rules("---\nmarp: true\n---\n\n# A\n\n---\n\n# B\n\n---\n\n# C\n\n---\n\n# D\n"), [], "slide breaks stay");
 });
 
 test("scan.mjs honours unslop-ignore markers", () => {

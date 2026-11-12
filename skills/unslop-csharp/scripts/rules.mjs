@@ -156,7 +156,7 @@ export default [
   { id: "cs-15", title: "GC.Collect", files, exclude, skipFile: notShipped, pattern: /\bGC\.Collect\(/ },
   { id: "cs-16", title: "Restating XML doc", files, exclude, check: restatingDocs },
   { id: "cs-17", title: "Region or banner", files, exclude: new RegExp(`${exclude.source}|${demo.source}`, "i"),
-    pattern: /^\s*#region\b[^\n]*|^\s*\/\/\s*[=\-*#]{4,}/,
+    pattern: /^\s*#region\b[^\n]*|^\s*\/\/\s*(?:[=\-*#]{4,}|[─━═]{2,})/,
     skipFile: notShipped, filter: (m) => !/#region\s+\S*-/.test(m) },
   { id: "cs-18", title: "Interpolated log template", files, exclude, skipFile: notShipped,
     pattern: /\.Log(?:Trace|Debug|Information|Warning|Error|Critical)\(\s*(?:\w+\s*,\s*)?\$"/ },
