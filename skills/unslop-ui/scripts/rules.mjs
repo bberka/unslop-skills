@@ -113,17 +113,16 @@ function focusRemoved(text) {
   return hits;
 }
 
-// A small round element beside text, or a ping. Both sizes must be small, so a progress bar
-// (`h-2 w-full rounded-full`) and an avatar (`h-10 w-10 rounded-full`) pass, and so does a
-// loading skeleton.
+// A small round element beside text, in any color, or a ping. Both sizes must be small, so a
+// progress bar (`h-2 w-full rounded-full`) and an avatar (`h-10 w-10 rounded-full`) pass, and
+// so does a loading skeleton.
 const SMALL = String.raw`(?:1|1\.5|2|2\.5|3|px)(?![\w.])`;
 const smallSize = new RegExp(String.raw`(?<![\w:-])size-${SMALL}`);
 const smallH = new RegExp(String.raw`(?<![\w:-])h-${SMALL}`);
 const smallW = new RegExp(String.raw`(?<![\w:-])w-${SMALL}`);
-const skeleton = /skeleton|\bbg-(?:muted|accent|secondary|(?:gray|slate|zinc|neutral|stone)-\d)/i;
 function statusDot(line) {
-  if (skeleton.test(line)) return false;
   if (/\banimate-ping\b/.test(line)) return true;
+  if (/skeleton/i.test(line)) return false;
   return /\brounded-full\b/.test(line) && (smallSize.test(line) || (smallH.test(line) && smallW.test(line)));
 }
 
@@ -193,14 +192,18 @@ const rules = [
     multiline: /\bfeDropShadow\b|\bshadow(?:Blur|Color)\b|\bminor\s*:\s*\{|\bborder\s*:\s*\{[^}]*\bwidth\s*:\s*(?:[2-9]|1\.[5-9])|\bgrid\s*:\s*\{[^}]*\blineWidth\s*:\s*(?:[2-9]|1\.[5-9])/,
     filter: (_m, _line, path) => !python.test(path) },
   { id: "ui-53", title: "Chart scaffolding", files: python, exclude,
-    pattern: /\.grid\([^)]*\b(?:linewidth|lw)\s*=\s*(?:[2-9]|1\.[5-9])|\bshadow\s*=\s*True\b/ },
+    pattern: /\.grid\([^)]*\b(?:linewidth|lw)\s*=\s*(?:[2-9]|1\.[5-9])|\bshadow\s*=\s*True\b/,
+    filter: (_m, _line, path) => python.test(path) },
   { id: "ui-54", title: "Chart legend", files: charts, exclude,
     multiline: /\blegend\s*:\s*\{[^}]*\b(?:display|show)\s*:\s*true|\bshowlegend\s*:\s*true|<(?:Chart)?Legend\b/,
     filter: (_m, _line, path) => !python.test(path) },
   { id: "ui-54", title: "Chart legend", files: python, exclude,
-    pattern: /\.legend\(|\bshowlegend\s*=\s*True\b/ },
+    pattern: /\.legend\(|\bshowlegend\s*=\s*True\b/,
+    filter: (_m, _line, path) => python.test(path) },
   { id: "ui-7", title: "ALL-CAPS eyebrow", files, exclude,
-    pattern: /\buppercase\b[^"'`\n]*\btracking-(?:wide|wider|widest|\[)|\btracking-(?:wider|widest)\b[^"'`\n]*\buppercase\b/ },
+    pattern: /\buppercase\b[^"'`\n]*\btracking-(?:wide|wider|widest|\[)|\btracking-(?:wider|widest)\b[^"'`\n]*\buppercase\b/,
+    // Table headers and key caps use the same styling and are not eyebrows.
+    filter: (_m, line) => !/<(?:th|TableHead(?:er)?|kbd|abbr)\b/.test(line) },
   { id: "ui-7", title: "Template chrome", files: markup, exclude, check: middleDots },
   { id: "ui-7", title: "Template chrome", files: markup, exclude, pattern: /→\s*(?:<\/|['"`])/ },
   { id: "ui-7", title: "Section numbering", files: markup, exclude,

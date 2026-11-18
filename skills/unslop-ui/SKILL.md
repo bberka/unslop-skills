@@ -1,6 +1,6 @@
 ---
 name: unslop-ui
-description: "Audits and fixes the generic AI-generated look in interfaces and graphic design: template gradients and card grids, display-serif and italic-accent defaults, badge, divider, and border clutter, opacity stacks, trend effects (grain, grid backgrounds, marquees, mesh gradients, squircles), token sprawl, missing states, broken focus and contrast, marketing copy, eyebrows, subtitles and captions that narrate the screen, status dots with no state, chart clutter and legends. Use when the user asks to unslop, de-template, or critique a UI, landing page, frontend, mockup, or screenshot."
+description: "Audits and fixes the generic AI-generated look in interfaces and graphic design: template gradients and card grids, display-serif and italic-accent defaults, badge, divider, and border clutter, opacity stacks, trend effects (grain, grid backgrounds, marquees, mesh gradients, squircles), token sprawl, missing states, broken focus and contrast, marketing copy, eyebrows, subtitles and captions that narrate the screen, status dots with no state, chart clutter and legends. Use when the user asks to unslop, de-template, or critique a UI, landing page, dashboard, chart, frontend, mockup, or screenshot."
 ---
 
 # Unslop UI

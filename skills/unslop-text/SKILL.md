@@ -44,4 +44,4 @@ Actions are `remove`, `delete-file`, `rewrite`, `merge`, `move`, `keep`, and `pr
 ## Scope notes
 
 - Commit messages belong to the `unslop-git` skill and code identifiers to the language skills. In code files, this skill rewrites comment and docstring text only.
-- UI copy (buttons, empty states, errors) also follows the copy rules in `unslop-ui`'s `ui-20`. When `unslop-ui` invokes this skill, apply both.
+- UI copy (buttons, empty states, errors) also follows the copy rules in `unslop-ui`'s `ui-20` and `ui-44` to `ui-48`. Labels, buttons, tabs, and badges are fragments by design, so the sentence rules apply only to full sentences there. When `unslop-ui` invokes this skill, apply both.

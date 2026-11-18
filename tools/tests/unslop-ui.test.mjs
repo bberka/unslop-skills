@@ -132,3 +132,11 @@ test("unslop-ui: chart tells are found in JS configs over several lines and in m
   assert.deepEqual(hits.sort(), ["chart.js:2 ui-50", "chart.js:3 ui-51", "chart.js:3 ui-51", "chart.js:5 ui-54", "chart.js:9 ui-53", "chart.js:9 ui-53",
     "plot.py:1 ui-50", "plot.py:2 ui-53", "plot.py:3 ui-54"]);
 });
+
+test("unslop-ui: a gray dot counts, table-header caps are not eyebrows, and Python chart rules stay in .py", () => {
+  const hits = scanFolder({
+    "Row.tsx": '<span className="size-2 rounded-full bg-gray-400" />\n<th className="text-xs uppercase tracking-wide">Name</th>\n',
+    "legend.ts": "export const draw = (chart) => chart.legend();\n",
+  });
+  assert.deepEqual(hits, ["Row.tsx:1 ui-49"]);
+});
