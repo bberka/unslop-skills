@@ -113,6 +113,42 @@ function focusRemoved(text) {
   return hits;
 }
 
+// A small round element beside text, in any color, or a ping. Both sizes must be small, so a
+// progress bar (`h-2 w-full rounded-full`) and an avatar (`h-10 w-10 rounded-full`) pass, and
+// so does a loading skeleton.
+const SMALL = String.raw`(?:1|1\.5|2|2\.5|3|px)(?![\w.])`;
+const smallSize = new RegExp(String.raw`(?<![\w:-])size-${SMALL}`);
+const smallH = new RegExp(String.raw`(?<![\w:-])h-${SMALL}`);
+const smallW = new RegExp(String.raw`(?<![\w:-])w-${SMALL}`);
+function statusDot(line) {
+  if (/\banimate-ping\b/.test(line)) return true;
+  if (/skeleton/i.test(line)) return false;
+  return /\brounded-full\b/.test(line) && (smallSize.test(line) || (smallH.test(line) && smallW.test(line)));
+}
+
+// An icon in a tinted tile: a small fixed-size box with a tinted fill and rounded corners
+// whose first child is an icon. An icon button, an avatar, and a tile that holds text pass.
+const CLASS_ATTR = /class(?:Name)?\s*=\s*(?:"([^"]*)"|\{?\s*[`']([^`']*)[`']\s*\}?)/g;
+const tileFill = /(?<![\w:-])bg-(?!(?:white|transparent|black)\b)[a-z]+(?:-(?:50|100|200)\b|-\d{3}\/\d{1,2}\b|\/\d{1,2}\b)/;
+const tileBox = /(?<![\w:-])(?:size-(?:7|8|9|10|11|12)|[hw]-(?:7|8|9|10|11|12))(?![\w.])/;
+const tileRound = /(?<![\w:-])rounded(?:-(?:md|lg|xl|2xl|full))?(?![\w-])/;
+const tileChild = /^\s*>\s*<(?:svg\b|i\b|[A-Z]\w*\b[^<>]*\/>)/;
+function iconTiles(text) {
+  const hits = [];
+  for (const m of text.matchAll(CLASS_ATTR)) {
+    const classes = m[1] ?? m[2] ?? "";
+    if (!(tileFill.test(classes) && tileBox.test(classes) && tileRound.test(classes))) continue;
+    if (/^\s*<button\b/.test(text.slice(text.lastIndexOf("<", m.index), m.index))) continue;
+    if (!tileChild.test(text.slice(m.index + m[0].length, m.index + m[0].length + 200))) continue;
+    hits.push({ line: text.slice(0, m.index).split("\n").length, match: m[0] });
+  }
+  return hits;
+}
+
+// Chart configs live in plain scripts as often as in components.
+const charts = /\.(?:[cm]?[jt]sx?|html?|vue|svelte|astro|py)$/i;
+const python = /\.py$/i;
+
 // Compiled Tailwind output is build output, not the UI source these tells judge.
 const compiled = (text) => /^\/\*! tailwindcss v/.test(text);
 
@@ -145,8 +181,29 @@ const rules = [
     pattern: /\bimport\s*\{[^}]*\b(?:Sparkles?|Zap|Rocket|ShieldCheck|Wand2?|Bolt|Lightning)\b[^}]*\}\s*from\s*['"](?:lucide-react|@heroicons|react-icons|@tabler|@phosphor|phosphor-react)/ },
   { id: "ui-6", title: "Emoji in UI", files: markup, exclude,
     check: perFile(/(?![©®™])\p{Extended_Pictographic}/gu, "emoji") },
+  { id: "ui-6", title: "Icon in a tinted tile", files: markup, exclude, check: iconTiles },
+  { id: "ui-49", title: "Status dot", files: markup, exclude,
+    check: (text) => text.split("\n").flatMap((l, i) => (statusDot(l) ? [{ line: i + 1, match: l.trim() }] : [])) },
+  { id: "ui-50", title: "Chart title names the chart type", files: charts, exclude,
+    pattern: /\b(?:bar|line|pie|area|scatter|donut|column) (?:chart|graph|plot) (?:of|showing|for)\b/i },
+  { id: "ui-51", title: "Chart reading instructions", files: charts, exclude,
+    pattern: /\beach (?:bar|point|dot|line|slice|column|row) (?:represents|shows|is)\b|\bhover (?:over|for|to see)\b/i },
+  { id: "ui-53", title: "Chart scaffolding", files: charts, exclude,
+    multiline: /\bfeDropShadow\b|\bshadow(?:Blur|Color)\b|\bminor\s*:\s*\{|\bborder\s*:\s*\{[^}]*\bwidth\s*:\s*(?:[2-9]|1\.[5-9])|\bgrid\s*:\s*\{[^}]*\blineWidth\s*:\s*(?:[2-9]|1\.[5-9])/,
+    filter: (_m, _line, path) => !python.test(path) },
+  { id: "ui-53", title: "Chart scaffolding", files: python, exclude,
+    pattern: /\.grid\([^)]*\b(?:linewidth|lw)\s*=\s*(?:[2-9]|1\.[5-9])|\bshadow\s*=\s*True\b/,
+    filter: (_m, _line, path) => python.test(path) },
+  { id: "ui-54", title: "Chart legend", files: charts, exclude,
+    multiline: /\blegend\s*:\s*\{[^}]*\b(?:display|show)\s*:\s*true|\bshowlegend\s*:\s*true|<(?:Chart)?Legend\b/,
+    filter: (_m, _line, path) => !python.test(path) },
+  { id: "ui-54", title: "Chart legend", files: python, exclude,
+    pattern: /\.legend\(|\bshowlegend\s*=\s*True\b/,
+    filter: (_m, _line, path) => python.test(path) },
   { id: "ui-7", title: "ALL-CAPS eyebrow", files, exclude,
-    pattern: /\buppercase\b[^"'`\n]*\btracking-(?:wide|wider|widest|\[)|\btracking-(?:wider|widest)\b[^"'`\n]*\buppercase\b/ },
+    pattern: /\buppercase\b[^"'`\n]*\btracking-(?:wide|wider|widest|\[)|\btracking-(?:wider|widest)\b[^"'`\n]*\buppercase\b/,
+    // Table headers and key caps use the same styling and are not eyebrows.
+    filter: (_m, line) => !/<(?:th|TableHead(?:er)?|kbd|abbr)\b/.test(line) },
   { id: "ui-7", title: "Template chrome", files: markup, exclude, check: middleDots },
   { id: "ui-7", title: "Template chrome", files: markup, exclude, pattern: /→\s*(?:<\/|['"`])/ },
   { id: "ui-7", title: "Section numbering", files: markup, exclude,
@@ -172,7 +229,7 @@ const rules = [
     pattern: /\b\d+(?:[.,]\d+)?[kKmM]?\+\s*(?:users|customers|developers|teams|companies|downloads|businesses|happy)\b|\b99\.9+%|\b(?:Trusted by|Loved by|Join) (?:thousands|millions|over|\d)/i },
   { id: "ui-11", title: "Motion everywhere", files, exclude,
     pattern: /\banimate-(?:pulse|bounce|ping)\b|\bhover:(?:scale-\d+|-translate-y-\d+)\b|\btransition-all\b|initial=\{\{\s*opacity:\s*0,\s*y:/,
-    filter: (m, line, path) => !(m === "animate-pulse" && /skeleton|loading|loader/i.test(line + " " + path)) },
+    filter: (m, line, path) => !(m === "animate-pulse" && /skeleton|loading|loader/i.test(line + " " + path)) && !(/^animate-(?:pulse|ping)$/.test(m) && statusDot(line)) },
   { id: "ui-11", title: "Layout or bounce animation", files, exclude,
     pattern: /\btransition-\[[^\]]*\b(?:width|height|top|left|margin|padding)\b|\btransition(?:-property)?:\s*[^;{}]*\b(?:width|height|top|left|margin|padding)\b|\banimate-(?:float|floating|shimmer|wiggle|levitate)\b|\bbounce:\s*0?\.[3-9]|data-(?:parallax|speed)\b|\bParallax\b/,
     filter: (m, line, path) => !(/shimmer/.test(m) && /skeleton|loading|loader/i.test(line + " " + path)) },
