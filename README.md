@@ -5,7 +5,7 @@ Agent skills that find and remove AI slop: patterns that mark text, interfaces, 
 | Skill | Covers | Scripts |
 | --- | --- | --- |
 | `unslop-text` | Docs, READMEs, posts, emails, code comments | `scan.mjs` |
-| `unslop-ui` | Interfaces, landing pages, mockups, screenshots | `scan.mjs`, `tokens.mjs` (design-token inventory) |
+| `unslop-ui` | Interfaces, landing pages, mockups, screenshots, UI copy, charts and dashboards | `scan.mjs`, `tokens.mjs` (design-token inventory) |
 | `unslop-git` | Writing new commit messages, auditing and rewording history | `lint-msg.mjs`, `reword.mjs` |
 | `unslop-typescript` | TypeScript and JavaScript code | `scan.mjs` (plus `knip` and `jscpd` via `npx`) |
 | `unslop-react` | React components, hooks, near-duplicate components | `scan.mjs`, `inventory.mjs` |
@@ -86,6 +86,10 @@ The scanners skip a line containing `unslop-ignore` and a file containing `unslo
 #!/bin/sh
 node ~/.agents/skills/unslop-git/scripts/lint-msg.mjs --check "$1"
 ```
+
+## Credits
+
+The copy, state, and chart tells in `unslop-ui` (`ui-44` to `ui-54`) and its examples are adapted from [felipebasurto/unslop-ui](https://github.com/felipebasurto/unslop-ui) under the MIT license; see [skills/unslop-ui/NOTICE.md](skills/unslop-ui/NOTICE.md).
 
 ## Development
 
