@@ -5,7 +5,7 @@ Agent skills that find and remove AI slop: patterns that mark text, interfaces, 
 | Skill | Covers | Scripts |
 | --- | --- | --- |
 | `unslop-text` | Docs, READMEs, posts, emails, code comments | `scan.mjs` |
-| `unslop-ui` | Interfaces, landing pages, mockups, screenshots, UI copy, charts and dashboards | `scan.mjs`, `tokens.mjs` (design-token inventory) |
+| `unslop-ui` | Interfaces, landing pages, mockups, screenshots, UI copy, charts and dashboards, and product decisions in app screens (as proposals) | `scan.mjs`, `tokens.mjs` (design-token inventory) |
 | `unslop-git` | Writing new commit messages, auditing and rewording history | `lint-msg.mjs`, `reword.mjs` |
 | `unslop-typescript` | TypeScript and JavaScript code | `scan.mjs` (plus `knip` and `jscpd` via `npx`) |
 | `unslop-react` | React components, hooks, near-duplicate components | `scan.mjs`, `inventory.mjs` |

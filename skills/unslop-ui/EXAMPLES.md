@@ -1,7 +1,7 @@
 <!-- unslop-ignore-file -->
 # Before and after
 
-Read these when unsure how far to cut. Each pair cuts to what the source already says and adds nothing.
+Read these when unsure how far to cut. Each pair cuts to what the source already says and adds nothing. The last three are product tells, where the after is a proposal and no file changes until the user agrees.
 
 ## Hero with eyebrow (ui-7, ui-44, ui-48)
 
@@ -174,3 +174,48 @@ After:
 ```
 
 Leave both and record each as a `propose` entry: "confirm the number or remove", "confirm this is a real customer quote or remove". Whether they are true is not in the code.
+
+## Account menu (ui-55)
+
+```jsx
+<DropdownMenuLabel>{user.name}<small>{user.email}</small></DropdownMenuLabel>
+<DropdownMenuItem>Profile</DropdownMenuItem>
+<DropdownMenuItem>Help</DropdownMenuItem>
+<DropdownMenuItem>Log out</DropdownMenuItem>
+```
+
+The app has one account per user, and a help icon sits in the header beside this menu. Proposals: "Remove the email from the menu label; there is no second account to tell apart" and "Remove the Help item; the header's help icon opens the same page". The model stores `user.away`, so a third proposal may name it: "Add an away toggle bound to `user.away`". Without that field, the proposals stop at the removals.
+
+## Due date (ui-56)
+
+Before:
+```html
+<select name="dueDay"></select>
+<select name="dueMonth"></select>
+<select name="dueYear"></select>
+```
+
+Proposed, when the project has no date picker of its own:
+```html
+<label for="due">Due date</label>
+<input id="due" type="date" />
+```
+
+The same three selects on a date-of-birth field are a `keep` entry.
+
+## Entity names on a detail page (ui-58)
+
+Before:
+```jsx
+<dt>Project</dt><dd>{task.project.name}</dd>
+<dt>Owner</dt><dd>{task.owner.name}</dd>
+```
+
+Proposed, because the router defines `/projects/:id` and `/members/:id`:
+```jsx
+<dt>Project</dt><dd><Link to={`/projects/${task.project.id}`}>{task.project.name}</Link></dd>
+<dt>Owner</dt><dd><Link to={`/members/${task.owner.id}`}>{task.owner.name}</Link></dd>
+```
+
+A name with no route behind it stays text.
+
