@@ -145,9 +145,35 @@ function iconTiles(text) {
   return hits;
 }
 
+// Day, month, and year dropdowns standing in for a date picker. The part is read from the
+// tag's name, id, label, or placeholder, or from a placeholder option, split into words so
+// `dueDay` counts and `today`, `birthday`, and `monthly` don't. A card expiry has two parts
+// and passes; a file that asks for a date of birth is skipped, since three fields suit a
+// date years away.
+const SELECT_TAG = /<(?:select|Select(?:Trigger|Value)?|NativeSelect)\b(?:=>|[^>])*>(?:\s*<option\b[^>]*>\s*(?:Day|Month|Year)\s*<)?/g;
+const NAMING_ATTR = /\b(?:name|id|aria-label|placeholder|label)\s*=\s*\{?\s*["'`]([^"'`]*)["'`]/g;
+const DATE_PART = /^(?:day|month|year)$/i;
+function dateSelects(text) {
+  if (/\bdate of birth\b|\bbirth ?(?:date|day)\b|\bbirth(?:Date|Day|Month|Year)|\b(?:dob|DOB)\b|\bbday\b/i.test(text)) return [];
+  const parts = new Set();
+  let first = null;
+  for (const m of text.matchAll(SELECT_TAG)) {
+    const words = [...m[0].matchAll(NAMING_ATTR)].flatMap((a) => a[1].split(/[^A-Za-z]+|(?<=[a-z])(?=[A-Z])/));
+    const option = />\s*(Day|Month|Year)\s*<$/.exec(m[0]);
+    if (option) words.push(option[1]);
+    const part = words.find((w) => DATE_PART.test(w));
+    if (!part) continue;
+    parts.add(part.toLowerCase());
+    first ??= text.slice(0, m.index).split("\n").length;
+  }
+  return parts.size === 3 ? [{ line: first, match: "day, month, and year selects" }] : [];
+}
+
 // Chart configs live in plain scripts as often as in components.
 const charts = /\.(?:[cm]?[jt]sx?|html?|vue|svelte|astro|py)$/i;
 const python = /\.py$/i;
+// A tour is usually wired up in a plain module (lib/tour.ts), not in the component.
+const scripts = /\.(?:[cm]?[jt]sx?|html?|vue|svelte|astro)$/i;
 
 // Compiled Tailwind output is build output, not the UI source these tells judge.
 const compiled = (text) => /^\/\*! tailwindcss v/.test(text);
@@ -242,6 +268,11 @@ const rules = [
   { id: "ui-41", title: "Greeting headline", files: markup, exclude,
     pattern: /\bWelcome back\b|>\s*(?:Good (?:morning|afternoon|evening)|Hello|Hi|Hey),?\s*(?:\{|[A-Z][a-z]+\s*[!👋<])/,
     filter: (_m, _line, path) => !/log-?in|sign-?in|auth/i.test(path) },
+  { id: "ui-56", title: "Day, month, and year selects", files: markup, exclude, check: dateSelects },
+  { id: "ui-57", title: "Tour library", files: scripts, exclude,
+    pattern: /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*)['"](?:react-joyride|shepherd\.js|react-shepherd|intro\.js(?:-react)?|driver\.js|@reactour\/tour|reactour|onborda|nextstepjs)['"]/ },
+  { id: "ui-57", title: "Product tour", files: markup, exclude,
+    pattern: /<(?:Onboarding(?:Modal|Dialog|Carousel|Slides|Tour)|Welcome(?:Modal|Dialog|Carousel|Tour)|(?:Product|Feature|App|Guided)Tour)\b|\bSkip (?:the )?(?:tour|intro|walkthrough|onboarding)\b/ },
   { id: "ui-13", title: "Arbitrary values", files, exclude,
     check: perFile(/\b[a-z][\w-]*-\[(?:-?\d*\.?\d+(?:px|rem|em|%|vh|vw)|#[0-9a-fA-F]{3,8})\]/g, "arbitrary values") },
   { id: "ui-15", title: "Low-contrast text", files, exclude,

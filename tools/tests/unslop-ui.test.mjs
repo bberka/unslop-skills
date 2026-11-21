@@ -6,9 +6,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scannerTests, scan, script, fixtures } from "./helpers.mjs";
 
-scannerTests({ skill: "unslop-ui", fixture: "ui", slop: ["Landing.tsx", "site.css"], clean: ["Clean.tsx"],
+scannerTests({ skill: "unslop-ui", fixture: "ui", slop: ["Landing.tsx", "site.css", "Tracker.tsx"], clean: ["Clean.tsx"],
   expect: ["ui-1", "ui-5", "ui-6", "ui-7", "ui-8", "ui-11", "ui-13", "ui-15", "ui-16", "ui-17", "ui-19", "ui-20", "ui-21",
-    "ui-22", "ui-23", "ui-24", "ui-25", "ui-26", "ui-27", "ui-28", "ui-29", "ui-31", "ui-32", "ui-33", "ui-34", "ui-35", "ui-36", "ui-37", "ui-38", "ui-39", "ui-40", "ui-41"] });
+    "ui-22", "ui-23", "ui-24", "ui-25", "ui-26", "ui-27", "ui-28", "ui-29", "ui-31", "ui-32", "ui-33", "ui-34", "ui-35", "ui-36", "ui-37", "ui-38", "ui-39", "ui-40", "ui-41", "ui-56", "ui-57"] });
 
 test("unslop-ui: trend tells are found in markup and in CSS", () => {
   const titles = (file) => { const t = scan("unslop-ui", "ui", [file]).filter((f) => (Number(f.id.slice(3)) >= 31 && Number(f.id.slice(3)) <= 38) || f.title === "Dark-mode gradient hero").map((f) => f.title); return [...new Set(t)].sort(); };
@@ -139,4 +139,32 @@ test("unslop-ui: a gray dot counts, table-header caps are not eyebrows, and Pyth
     "legend.ts": "export const draw = (chart) => chart.legend();\n",
   });
   assert.deepEqual(hits, ["Row.tsx:1 ui-49"]);
+});
+
+test("unslop-ui: date selects need all three parts, read placeholders, and pass a date of birth and a card expiry", () => {
+  const hits = scanFolder({
+    "Due.vue": '<select name="due_day"></select>\n<select id="due-month"></select>\n<select aria-label="Year"></select>\n',
+    "Arrow.tsx": '<select onChange={(e) => f(e)} name="dueDay" />\n<select onChange={(e) => f(e)} name="dueMonth" />\n<select onChange={(e) => f(e)} name="dueYear" />\n',
+    "Shadcn.tsx": [
+      '<Select onValueChange={(v) => set("d", v)}><SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger></Select>',
+      '<Select><SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger></Select>',
+      '<Select><SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger></Select>',
+    ].join("\n"),
+    "Options.html": "<select><option>Day</option></select>\n<select>\n  <option value=\"\">Month</option></select>\n<select><option>Year</option></select>\n",
+    "Birth.tsx": '<label>Date of birth</label>\n<select name="day" />\n<select name="month" />\n<select name="year" />\n',
+    "Expiry.tsx": '<select name="expMonth" />\n<select name="expYear" />\n',
+    "Report.tsx": '<select name="today" />\n<select name="monthly" />\n<select name="yearly" />\n<input type="date" name="day" />\n',
+  });
+  assert.deepEqual(hits.sort(), ["Arrow.tsx:1 ui-56", "Due.vue:1 ui-56", "Options.html:1 ui-56", "Shadcn.tsx:1 ui-56"],
+    "a name after an arrow handler is still read");
+});
+
+test("unslop-ui: tour libraries are found in plain modules, skip buttons in markup, and a setup form passes", () => {
+  const hits = scanFolder({
+    "Tour.tsx": 'import { driver } from "driver.js";\nimport "driver.js/dist/driver.css";\n<ProductTour />\n<button>Skip the walkthrough</button>\n',
+    "tour.ts": 'export const start = async () => (await import("shepherd.js")).default;\nconst intro = require("intro.js");\n',
+    "Setup.tsx": '<SetupForm />\n<button>Skip for now</button>\n<Link to="/tours">Tour dates</Link>\n',
+  });
+  assert.deepEqual(hits.sort(), ["Tour.tsx:1 ui-57", "Tour.tsx:3 ui-57", "Tour.tsx:4 ui-57", "tour.ts:1 ui-57", "tour.ts:2 ui-57"],
+    "the library's stylesheet import is not a second hit, and a lazy import in a plain module is found");
 });
